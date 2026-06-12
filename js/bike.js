@@ -1,183 +1,208 @@
-/* The bike: two wheels joined by a rigid frame, simulated with Verlet integration.
-   Tuned to be bouncy and forgiving — easy for little kids, still fun to jump. */
+/* bike.js — Mountain Bike: hold GO to ride the hills and collect stars */
+(function () {
+  const LEVEL_W = 4200;          // world width in px
+  const STAR_COUNT = 8;
+  const BIKE_SCREEN_X = 0.26;    // bike fixed at 26% of viewport width
+  const SPEED = 360;             // px / second
 
-class Bike {
-  constructor(terrain) {
-    this.terrain = terrain;
-    this.r = 22;            // wheel radius
-    this.L = 64;            // wheelbase (distance between wheels)
-    this.gravity = 2300;    // px/s^2
-    this.maxStep = 9.5;     // speed clamp (px per substep)
+  let root, world, bikeEl, hud, countEl, winEl, svg;
+  let stars = [];                // {x, baseY, el, got}
+  let cameraX = 0, moving = false, raf = null, last = 0, collected = 0, built = false, finished = false;
 
-    this.spin = 0;          // visual wheel rotation
-    this.rearGround = false;
-    this.frontGround = false;
-    this.crashed = false;
-    this.crashTimer = 0;
-
-    this.jumpV = 7.6;       // jump strength (reaches ~170px high)
-    this.jumpCd = 0;        // cooldown so it hops once per landing
-
-    this.reset(terrain.startX, terrain.startY);
+  // ground height function (top of grass) at world x — gentle rolling hills
+  function groundTop(x, H) {
+    const base = H * 0.62;
+    return base
+      - Math.sin(x * 0.0016) * H * 0.13
+      - Math.sin(x * 0.0041 + 1.3) * H * 0.06;
   }
 
-  reset(x, y) {
-    const gy = this.groundY(x) - this.r;
-    this.rear  = { x: x,           y: gy, ox: x,           oy: gy };
-    this.front = { x: x + this.L,  y: this.groundY(x + this.L) - this.r,
-                   ox: x + this.L, oy: this.groundY(x + this.L) - this.r };
-    this.spin = 0;
-    this.crashed = false;
-    this.crashTimer = 0;
+  function build() {
+    if (built) return;
+    root = document.getElementById('screen-bike');
+    root.innerHTML = `
+      <div class="sun"></div>
+      <div class="b-world" id="b-world"></div>
+      <div class="b-hud"><div class="b-count"><span>⭐</span><span id="b-count">0 / ${STAR_COUNT}</span></div></div>
+      <div class="b-corner left"><button class="b-iconbtn" id="b-home" title="Home">🏠</button></div>
+      <div class="b-corner right"><button class="b-iconbtn" id="b-reset" title="Restart">🔄</button></div>
+      <button class="b-back" id="b-back" title="Back">◀</button>
+      <button class="b-go" id="b-go">GO ▶</button>
+      <div class="b-win" id="b-win">
+        <div class="big">🏆</div><h3>You did it!</h3>
+        <p id="b-win-sub">You collected all the stars!</p>
+        <div class="row">
+          <button class="again" id="b-again">Play again</button>
+          <button class="home" id="b-winhome">Home</button>
+        </div>
+      </div>`;
+    world = root.querySelector('#b-world');
+    countEl = root.querySelector('#b-count');
+    winEl = root.querySelector('#b-win');
+
+    root.querySelector('#b-home').addEventListener('click', window.goHome);
+    root.querySelector('#b-back').addEventListener('click', window.goHome);
+    root.querySelector('#b-reset').addEventListener('click', reset);
+    root.querySelector('#b-again').addEventListener('click', reset);
+    root.querySelector('#b-winhome').addEventListener('click', window.goHome);
+
+    const go = root.querySelector('#b-go');
+    const press = e => { moving = true; e.preventDefault(); };
+    const release = () => { moving = false; };
+    go.addEventListener('pointerdown', press);
+    window.addEventListener('pointerup', release);
+    go.addEventListener('pointerleave', release);
+
+    // keyboard: hold right arrow / space
+    window.addEventListener('keydown', e => {
+      if (document.body.dataset.screen !== 'bike') return;
+      if (e.key === 'ArrowRight' || e.key === ' ') moving = true;
+    });
+    window.addEventListener('keyup', e => { if (e.key === 'ArrowRight' || e.key === ' ') moving = false; });
+    window.addEventListener('resize', () => { if (document.body.dataset.screen === 'bike') layout(); });
+    built = true;
   }
 
-  groundY(x) { return terrainAt(this.terrain.points, this.terrain.dx, x); }
-
-  groundSlope(x) {
-    const d = 6;
-    return (this.groundY(x + d) - this.groundY(x - d)) / (2 * d);
+  function clouds(H) {
+    let html = '';
+    const data = [[12, 8, 70, 26], [40, 16, 95, 60], [66, 6, 80, 40], [88, 20, 60, 50]];
+    data.forEach(([l, t, w, d]) => {
+      html += `<div class="cloud" style="left:${l}vw;top:${t}vh;width:${w}px;height:${w * 0.42}px;animation-duration:${d}s;
+        box-shadow:0 0 0 0 #fff;"></div>`;
+    });
+    return html;
   }
 
-  get cx() { return (this.rear.x + this.front.x) / 2; }
-  get cy() { return (this.rear.y + this.front.y) / 2; }
-  get angle() { return Math.atan2(this.front.y - this.rear.y, this.front.x - this.rear.x); }
-  get speed() { return ((this.front.x - this.front.ox) + (this.rear.x - this.rear.ox)) / 2; }
+  function layout() {
+    const H = root.clientHeight;
+    // build the hill svg path
+    const step = 24;
+    let top = `M 0 ${H} L 0 ${groundTop(0, H)}`;
+    let back = '';
+    for (let x = 0; x <= LEVEL_W; x += step) top += ` L ${x} ${groundTop(x, H)}`;
+    top += ` L ${LEVEL_W} ${H} Z`;
+    // a lighter back hill for depth
+    let backPath = `M 0 ${H} L 0 ${groundTop(0, H) - H * 0.1}`;
+    for (let x = 0; x <= LEVEL_W; x += step) backPath += ` L ${x} ${groundTop(x + 600, H) - H * 0.1}`;
+    backPath += ` L ${LEVEL_W} ${H} Z`;
 
-  rotate(theta) {
-    const cx = this.cx, cy = this.cy;
-    const c = Math.cos(theta), s = Math.sin(theta);
-    for (const w of [this.rear, this.front]) {
-      let dx = w.x - cx, dy = w.y - cy;
-      w.x = cx + dx * c - dy * s;  w.y = cy + dx * s + dy * c;
-      dx = w.ox - cx; dy = w.oy - cy;
-      w.ox = cx + dx * c - dy * s; w.oy = cy + dx * s + dy * c;
+    world.style.width = LEVEL_W + 'px';
+    world.innerHTML =
+      `<svg width="${LEVEL_W}" height="${H}" viewBox="0 0 ${LEVEL_W} ${H}">
+        <path d="${backPath}" fill="#9ad97f" opacity="0.7"></path>
+        <path d="${top}" fill="#5fc16a"></path>
+        <path d="${top}" fill="none" stroke="#4aab57" stroke-width="6" opacity="0.4"></path>
+      </svg>`;
+
+    // flowers along the ground
+    for (let x = 240; x < LEVEL_W - 200; x += 320) {
+      const f = document.createElement('div');
+      f.className = 'b-flower';
+      f.textContent = ['🌼', '🌸', '🌷'][Math.floor(Math.random() * 3)];
+      f.style.left = x + 'px';
+      f.style.top = (groundTop(x, H) + 6) + 'px';
+      world.appendChild(f);
     }
-  }
 
-  integrateWheel(w, dt) {
-    let vx = (w.x - w.ox) * 0.999;
-    let vy = (w.y - w.oy) * 0.999;
-    // clamp
-    vx = Math.max(-this.maxStep, Math.min(this.maxStep, vx));
-    w.ox = w.x; w.oy = w.y;
-    w.x += vx;
-    w.y += vy + this.gravity * dt * dt;
-  }
-
-  constrain() {
-    let dx = this.front.x - this.rear.x;
-    let dy = this.front.y - this.rear.y;
-    let d = Math.hypot(dx, dy) || 0.0001;
-    const diff = (d - this.L) / d * 0.5;
-    const ox = dx * diff, oy = dy * diff;
-    this.rear.x += ox; this.rear.y += oy;
-    this.front.x -= ox; this.front.y -= oy;
-  }
-
-  collideWheel(w) {
-    const gy = this.groundY(w.x);
-    const limit = gy - this.r;
-    if (w.y > limit) {
-      w.y = limit;
-      // stop sinking (no vertical bounce) and keep most rolling momentum
-      const vx = (w.x - w.ox);
-      w.oy = w.y;
-      w.ox = w.x - vx * 0.985;
-      return true;
+    // stars spaced across the level, floating above the ground
+    stars = [];
+    const span = LEVEL_W - 900;
+    for (let i = 0; i < STAR_COUNT; i++) {
+      const x = 520 + (span / (STAR_COUNT - 1)) * i;
+      const y = groundTop(x, H) - (70 + Math.random() * 90);
+      const el = document.createElement('div');
+      el.className = 'b-star';
+      el.textContent = '⭐';
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      world.appendChild(el);
+      stars.push({ x, y, el, got: false });
     }
-    return false;
+
+    // bike element
+    bikeEl = document.createElement('div');
+    bikeEl.className = 'b-bike';
+    bikeEl.textContent = '🚵';
+    world.appendChild(bikeEl);
+
+    placeBike(H);
   }
 
-  /* input: { gas:bool, brake:bool }  dt: substep seconds */
-  step(input, dt) {
-    this.integrateWheel(this.rear, dt);
-    this.integrateWheel(this.front, dt);
+  function placeBike(H) {
+    const bikeWorldX = cameraX + window.innerWidth * BIKE_SCREEN_X;
+    bikeEl.style.left = bikeWorldX + 'px';
+    bikeEl.style.top = groundTop(bikeWorldX, H) + 'px';
+    bikeEl.style.transform = 'translate(-50%,-100%) rotate(' + tilt(bikeWorldX, H) + 'deg)';
+  }
 
-    for (let i = 0; i < 4; i++) this.constrain();
+  function tilt(x, H) {
+    const a = groundTop(x - 30, H), b = groundTop(x + 30, H);
+    return Math.max(-22, Math.min(22, Math.atan2(b - a, 60) * 180 / Math.PI));
+  }
 
-    this.rearGround = this.collideWheel(this.rear);
-    this.frontGround = this.collideWheel(this.front);
-    this.constrain();
-    this.collideWheel(this.rear);
-    this.collideWheel(this.front);
+  function loop(ts) {
+    if (!last) last = ts;
+    const dt = Math.min((ts - last) / 1000, 0.05);
+    last = ts;
+    const H = root.clientHeight;
+    const maxCam = LEVEL_W - window.innerWidth;
 
-    const onGround = this.rearGround || this.frontGround;
+    if (moving && cameraX < maxCam) {
+      cameraX = Math.min(maxCam, cameraX + SPEED * dt);
+    }
+    world.style.transform = 'translateX(' + (-cameraX) + 'px)';
 
-    // ---- driving ----
-    const drive = 0.215;  // forward push per substep
-    if (input.gas) {
-      if (this.rearGround) {
-        const slope = this.groundSlope(this.rear.x);
-        const len = Math.hypot(1, slope);
-        this.rear.ox -= drive / len;
-        this.rear.oy -= drive * slope / len;
-      } else {
-        this.rotate(-0.012); // wheelie / keep nose up in the air
+    const bikeWorldX = cameraX + window.innerWidth * BIKE_SCREEN_X;
+    bikeEl.style.left = bikeWorldX + 'px';
+    bikeEl.style.top = groundTop(bikeWorldX, H) + 'px';
+    const wob = moving ? Math.sin(ts * 0.02) * 3 : 0;
+    bikeEl.style.transform = 'translate(-50%,-100%) rotate(' + (tilt(bikeWorldX, H) + wob) + 'deg)';
+
+    // collect
+    stars.forEach(s => {
+      if (s.got) return;
+      if (Math.abs(s.x - bikeWorldX) < 52 && Math.abs(s.y - groundTop(bikeWorldX, H)) < 220) {
+        s.got = true; s.el.classList.add('got'); collected++;
+        countEl.textContent = collected + ' / ' + STAR_COUNT;
+        if (collected === STAR_COUNT) win();
       }
-    }
-    if (input.brake) {
-      if (onGround) {
-        // brake + gentle reverse
-        this.rear.ox += 0.13;
-        this.front.ox += 0.13;
-      } else {
-        this.rotate(0.012);  // nose down in the air
-      }
-    }
+    });
 
-    // ---- gentle auto-balance on the ground (kid-friendly) ----
-    if (onGround && !input.gas && !input.brake) {
-      const target = Math.atan(this.groundSlope(this.cx));
-      let diff = target - this.angle;
-      while (diff > Math.PI) diff -= 2 * Math.PI;
-      while (diff < -Math.PI) diff += 2 * Math.PI;
-      this.rotate(diff * 0.08);
-    }
-
-    // wheel spin visual
-    this.spin += this.speed / this.r;
+    raf = requestAnimationFrame(loop);
   }
 
-  /* run a frame (a couple of substeps for stability) */
-  update(input, frameDt) {
-    this.justJumped = false;
-    if (this.crashed) {
-      this.crashTimer -= frameDt;
-      // let it settle, then game will respawn
-      const dt = 1 / 120;
-      for (let i = 0; i < 2; i++) this.physicsOnly(dt);
-      return;
-    }
-    // ---- jump: a hop straight up when on the ground ----
-    if (this.jumpCd > 0) this.jumpCd -= frameDt;
-    if (input.jump && (this.rearGround || this.frontGround) && this.jumpCd <= 0) {
-      this.rear.oy = this.rear.y + this.jumpV;   // verlet velocity = pos - prev (upward)
-      this.front.oy = this.front.y + this.jumpV;
-      this.jumpCd = 0.5;
-      this.justJumped = true;
-    } else {
-      this.justJumped = false;
-    }
-
-    const dt = 1 / 120;
-    for (let i = 0; i < 2; i++) this.step(input, dt);
-
-    // detect a tip-over (upside down & barely moving) → mark crashed
-    const a = Math.abs(this.angle);
-    const upsideDown = a > 2.0;
-    if (upsideDown && Math.abs(this.speed) < 0.6) {
-      this.crashed = true;
-      this.crashTimer = 0.7;
-    }
+  function win() {
+    if (finished) return;
+    finished = true; moving = false;
+    setTimeout(() => winEl.classList.add('show'), 400);
   }
 
-  physicsOnly(dt) {
-    this.integrateWheel(this.rear, dt);
-    this.integrateWheel(this.front, dt);
-    for (let i = 0; i < 4; i++) this.constrain();
-    this.collideWheel(this.rear);
-    this.collideWheel(this.front);
+  function reset() {
+    finished = false; moving = false; cameraX = 0; collected = 0; last = 0;
+    winEl.classList.remove('show');
+    countEl.textContent = '0 / ' + STAR_COUNT;
+    layout();
   }
 
-  readyToRespawn() { return this.crashed && this.crashTimer <= 0; }
-}
+  window.startBike = function () {
+    build();
+    finished = false; moving = false; cameraX = 0; collected = 0; last = 0;
+    winEl.classList.remove('show');
+    countEl.textContent = '0 / ' + STAR_COUNT;
+    requestAnimationFrame(() => {
+      // inject clouds now that we know viewport
+      const H = root.clientHeight;
+      root.querySelectorAll('.cloud').forEach(c => c.remove());
+      root.insertAdjacentHTML('afterbegin', clouds(H));
+      layout();
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(loop);
+    });
+  };
+
+  window.stopBike = function () {
+    moving = false;
+    cancelAnimationFrame(raf);
+    raf = null; last = 0;
+  };
+})();

@@ -1,73 +1,99 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>🚵 Mountain Bike Adventure</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=3" />
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>🚵 Mountain Bike</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root { --font: 'Fredoka', "Comic Sans MS", system-ui, sans-serif; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; width: 100%; overflow: hidden; font-family: var(--font); user-select: none; touch-action: none; }
+
+  #screen-bike {
+    position: fixed; inset: 0; z-index: 20; overflow: hidden;
+    background: linear-gradient(180deg, #aee4ff 0%, #cfeeff 55%, #e8f7ff 100%);
+  }
+  #screen-bike .sun {
+    position: absolute; top: 5%; right: 6%; width: 84px; height: 84px; border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%, #fff3b0, #ffd84d);
+    box-shadow: 0 0 50px rgba(255,216,77,.7); animation: floaty 6s ease-in-out infinite;
+  }
+  #screen-bike .cloud {
+    position: absolute; background: #fff; border-radius: 50px; opacity: .92;
+    box-shadow: 0 8px 18px rgba(120,160,200,.18); animation: drift linear infinite;
+  }
+  #screen-bike .cloud::before, #screen-bike .cloud::after { content: ""; position: absolute; background: #fff; border-radius: 50%; }
+  #screen-bike .cloud::before { width: 55%; height: 130%; left: 12%; top: -55%; }
+  #screen-bike .cloud::after  { width: 42%; height: 110%; right: 14%; top: -38%; }
+  @keyframes drift { from { transform: translateX(0); } to { transform: translateX(-120vw); } }
+  @keyframes floaty { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-22px) rotate(8deg); } }
+  @keyframes bob { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-7px) rotate(3deg); } }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+
+  .b-world { position: absolute; left: 0; bottom: 0; height: 100%; will-change: transform; }
+  .b-world svg { position: absolute; left: 0; bottom: 0; }
+  .b-star { position: absolute; font-size: 30px; transform: translate(-50%,-50%); transition: transform .2s ease, opacity .2s ease; }
+  .b-star.got { transform: translate(-50%,-180%) scale(1.6); opacity: 0; }
+  .b-flower { position: absolute; font-size: 22px; transform: translate(-50%,-50%); }
+  .b-bike { position: absolute; font-size: 58px; transform: translate(-50%,-100%); transition: none; z-index: 3; will-change: transform; }
+
+  .b-hud { position: absolute; top: 16px; left: 0; right: 0; z-index: 5; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .b-count {
+    display: flex; align-items: center; gap: 8px; white-space: nowrap;
+    background: rgba(44,59,102,.55); color: #fff; font-weight: 700; font-size: 22px;
+    padding: 8px 20px; border-radius: 999px; font-family: var(--font);
+  }
+  .b-corner { position: absolute; top: 16px; z-index: 6; }
+  .b-corner.left { left: 16px; } .b-corner.right { right: 16px; }
+  .b-iconbtn {
+    width: 50px; height: 50px; border: none; border-radius: 15px; cursor: pointer;
+    background: rgba(255,255,255,.92); font-size: 22px; display: grid; place-items: center;
+    box-shadow: 0 6px 14px rgba(40,70,110,.2); transition: transform .16s ease;
+  }
+  .b-iconbtn:active { transform: scale(.9); }
+  .b-go {
+    position: absolute; bottom: 30px; right: 30px; z-index: 6;
+    width: 110px; height: 110px; border-radius: 50%; border: 5px solid #fff; cursor: pointer;
+    background: radial-gradient(circle at 40% 35%, #7be38f, #27b15f);
+    color: #fff; font-family: var(--font); font-weight: 700; font-size: 26px;
+    box-shadow: 0 12px 26px rgba(39,177,95,.5); transition: transform .12s ease;
+    display: grid; place-items: center; user-select: none; touch-action: none;
+  }
+  .b-go:active { transform: scale(.92); }
+  .b-back {
+    position: absolute; bottom: 36px; left: 30px; z-index: 6;
+    width: 76px; height: 76px; border-radius: 50%; border: 5px solid #fff; cursor: pointer;
+    background: radial-gradient(circle at 40% 35%, #ff8f8f, #ee4b4b);
+    color: #fff; font-size: 26px; box-shadow: 0 10px 22px rgba(238,75,75,.45);
+    display: grid; place-items: center; transition: transform .12s ease; touch-action: none;
+  }
+  .b-back:active { transform: scale(.92); }
+  .b-win {
+    position: absolute; inset: 0; z-index: 8; display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+    background: rgba(44,59,102,.5); backdrop-filter: blur(3px); color: #fff; text-align: center;
+  }
+  .b-win.show { display: flex; animation: fadein .25s ease; }
+  .b-win .big { font-size: 64px; animation: bob 1.6s ease-in-out infinite; }
+  .b-win h3 { font-size: 38px; font-weight: 700; }
+  .b-win p { font-size: 19px; font-weight: 500; opacity: .95; }
+  .b-win .row { display: flex; gap: 12px; margin-top: 6px; }
+  .b-win button { border: none; cursor: pointer; font-family: var(--font); font-weight: 600; font-size: 17px; padding: 13px 26px; border-radius: 999px; box-shadow: 0 8px 18px rgba(0,0,0,.2); }
+  .b-win .again { background: #fff; color: #27b15f; }
+  .b-win .home { background: rgba(255,255,255,.22); color: #fff; }
+</style>
 </head>
-<body>
-  <div id="game">
-    <canvas id="canvas"></canvas>
+<body data-screen="bike">
+  <section id="screen-bike"></section>
 
-    <!-- In-game HUD -->
-    <div id="hud" class="hidden">
-      <button class="hud-btn" id="btnMenu" title="Back to map">🏠</button>
-      <div id="starCount" class="star-count">⭐ 0 / 0</div>
-      <button class="hud-btn" id="btnRestart" title="Restart">🔄</button>
-    </div>
-
-    <!-- Touch controls -->
-    <div id="touchControls" class="hidden">
-      <div class="ctrl-group ctrl-left">
-        <button class="ctrl ctrl-back" id="ctrlBack">◀</button>
-      </div>
-      <div class="ctrl-group ctrl-right">
-        <button class="ctrl ctrl-jump" id="ctrlJump">⬆<small>JUMP</small></button>
-        <button class="ctrl ctrl-go" id="ctrlGo">GO ▶</button>
-      </div>
-    </div>
-
-    <!-- HOME screen -->
-    <div id="home" class="screen">
-      <div class="bubble">
-        <h1 class="title">🚵 Mountain<br>Bike Adventure</h1>
-        <p class="subtitle">Ride over the hills and collect the stars!</p>
-        <button class="big-btn play" id="btnPlay">▶ PLAY</button>
-        <button class="big-btn ghost" id="btnMute">🔊 Sound: On</button>
-        <a class="big-btn ghost small" href="index.html" style="text-decoration:none;">⬅ All Games</a>
-      </div>
-    </div>
-
-    <!-- LEVEL SELECT screen -->
-    <div id="levels" class="screen hidden">
-      <h2 class="screen-title">Pick a Trail!</h2>
-      <div id="levelGrid" class="level-grid"></div>
-      <button class="big-btn ghost small" id="btnHome">🏠 Home</button>
-    </div>
-
-    <!-- WIN screen -->
-    <div id="win" class="screen hidden">
-      <div class="bubble">
-        <h2 class="screen-title" id="winTitle">You Made It! 🎉</h2>
-        <div class="win-stars" id="winStars">⭐⭐⭐</div>
-        <p class="subtitle" id="winMsg">Great riding!</p>
-        <div class="win-buttons">
-          <button class="big-btn ghost small" id="btnWinMenu">🗺️ Map</button>
-          <button class="big-btn ghost small" id="btnWinReplay">🔄 Again</button>
-          <button class="big-btn play small" id="btnNext">Next ▶</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="js/storage.js?v=3"></script>
-  <script src="js/audio.js?v=3"></script>
-  <script src="js/levels.js?v=3"></script>
-  <script src="js/bike.js?v=3"></script>
-  <script src="js/game.js?v=3"></script>
+  <script src="js/bike.js?v=6"></script>
+  <script>
+    // standalone wiring: the dashboard is the "home"
+    window.goHome = function () { if (window.stopBike) window.stopBike(); window.location.href = 'index.html'; };
+    window.startBike();
+  </script>
 </body>
 </html>
