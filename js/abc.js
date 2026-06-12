@@ -30,11 +30,10 @@
   ];
 
   const SIZE = 420;
-  const FONT = '"Baloo 2", "Comic Sans MS", sans-serif';
   const PEN = 7;             // the child's tracing pen
   const DETECT = 26;         // how close the pen must be to the line to "hit" it
-  const DOT_GAP = 13;        // spacing of the dashed centre-line dots
-  const DOT_R = 2.8;         // centre-line dash radius
+  const GS = 2.9, GOFF = 65; // scale + offset mapping the 0..100 stroke box to canvas
+  const BODY_OUT = 34, BODY_IN = 27; // letter thickness (black then white -> hollow outline)
 
   // ---- storage ----
   const KEY = "abc_trace_v1";
@@ -76,124 +75,89 @@
   const itx = maskInk.getContext("2d", { willReadFrequently: true });
 
   let index = 0, strokes = [], drawing = false;
-  let targetPixels = null, targetCount = 0, skelDots = [], endDots = [], solved = false, moveTick = 0, fontReady = false;
+  let targetPixels = null, targetCount = 0, solved = false, moveTick = 0;
+  let curStrokes = [];   // current letter's strokes, scaled to canvas coords
 
   function curChar() { return save.lower ? LETTERS[index].c.toLowerCase() : LETTERS[index].c; }
 
-  function paintGlyph(c, color) {
-    c.fillStyle = color; c.textAlign = "center"; c.textBaseline = "middle";
-    c.font = "800 250px " + FONT;
-    c.fillText(curChar(), SIZE / 2, SIZE / 2 + 8);
+  // load + scale the authored strokes for the current letter/case
+  function setStrokes() {
+    const set = save.lower ? window.ABC_STROKES.low : window.ABC_STROKES.up;
+    const key = save.lower ? LETTERS[index].c.toLowerCase() : LETTERS[index].c;
+    const raw = (set && set[key]) || [];
+    curStrokes = raw.map(s => s.map(p => ({ x: GOFF + p[0] * GS, y: GOFF + p[1] * GS })));
   }
-  function drawGlyph(c, color) { c.clearRect(0, 0, SIZE, SIZE); paintGlyph(c, color); }
 
-  /* Zhang-Suen thinning: reduce the filled letter to a 1px centre-line ("skeleton"). */
-  function thin(g, w, h) {
-    const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : g[y * w + x];
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (let step = 0; step < 2; step++) {
-        const rem = [];
-        for (let y = 1; y < h - 1; y++) {
-          for (let x = 1; x < w - 1; x++) {
-            if (!g[y * w + x]) continue;
-            const p2 = at(x, y - 1), p3 = at(x + 1, y - 1), p4 = at(x + 1, y), p5 = at(x + 1, y + 1),
-                  p6 = at(x, y + 1), p7 = at(x - 1, y + 1), p8 = at(x - 1, y), p9 = at(x - 1, y - 1);
-            const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
-            if (B < 2 || B > 6) continue;
-            const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
-            let A = 0;
-            for (let i = 0; i < 8; i++) if (seq[i] === 0 && seq[i + 1] === 1) A++;
-            if (A !== 1) continue;
-            if (step === 0) { if (p2 * p4 * p6 !== 0 || p4 * p6 * p8 !== 0) continue; }
-            else { if (p2 * p4 * p8 !== 0 || p2 * p6 * p8 !== 0) continue; }
-            rem.push(y * w + x);
-          }
-        }
-        if (rem.length) { changed = true; for (const i of rem) g[i] = 0; }
-      }
+  function isDot(s) {
+    if (s.length < 2) return true;
+    const a = s[0], b = s[s.length - 1];
+    return Math.hypot(b.x - a.x, b.y - a.y) < 6;
+  }
+
+  // draw a smooth path through the stroke points
+  function tracePath(c, s) {
+    if (s.length === 1) { c.moveTo(s[0].x, s[0].y); c.lineTo(s[0].x + 0.1, s[0].y); return; }
+    c.moveTo(s[0].x, s[0].y);
+    for (let i = 1; i < s.length - 1; i++) {
+      const mx = (s[i].x + s[i + 1].x) / 2, my = (s[i].y + s[i + 1].y) / 2;
+      c.quadraticCurveTo(s[i].x, s[i].y, mx, my);
     }
-    return g;
+    const n = s.length;
+    c.quadraticCurveTo(s[n - 2].x, s[n - 2].y, s[n - 1].x, s[n - 1].y);
   }
 
   function buildTarget() {
-    drawGlyph(mtx, "#000");
+    // rasterize the centre lines -> the pixels the child must cover
+    mtx.clearRect(0, 0, SIZE, SIZE);
+    mtx.strokeStyle = "#000"; mtx.fillStyle = "#000";
+    mtx.lineCap = "round"; mtx.lineJoin = "round"; mtx.lineWidth = 7;
+    for (const s of curStrokes) {
+      if (isDot(s)) { mtx.beginPath(); mtx.arc(s[0].x, s[0].y, 6, 0, 7); mtx.fill(); continue; }
+      mtx.beginPath(); tracePath(mtx, s); mtx.stroke();
+    }
     const data = mtx.getImageData(0, 0, SIZE, SIZE).data;
-    const fill = new Uint8Array(SIZE * SIZE);
-    for (let i = 0; i < SIZE * SIZE; i++) if (data[i * 4 + 3] > 60) fill[i] = 1;
-
-    const skel = fill.slice();
-    thin(skel, SIZE, SIZE);
-
-    targetPixels = skel;
+    targetPixels = new Uint8Array(SIZE * SIZE);
     targetCount = 0;
-    for (let i = 0; i < skel.length; i++) if (skel[i]) targetCount++;
+    for (let i = 0; i < SIZE * SIZE; i++) if (data[i * 4 + 3] > 40) { targetPixels[i] = 1; targetCount++; }
+  }
 
-    // sub-sample the skeleton into evenly spaced guide dots
-    const pts = [];
-    for (let y = 0; y < SIZE; y++)
-      for (let x = 0; x < SIZE; x++)
-        if (skel[y * SIZE + x]) pts.push({ x, y });
-
-    skelDots = [];
-    const minSq = DOT_GAP * DOT_GAP;
-    for (const p of pts) {
-      let ok = true;
-      for (const d of skelDots) {
-        const dx = d.x - p.x, dy = d.y - p.y;
-        if (dx * dx + dy * dy < minSq) { ok = false; break; }
-      }
-      if (ok) skelDots.push(p);
-    }
-
-    // endpoints = skeleton pixels with a single neighbour (start/end of strokes)
-    const isSkel = (x, y) => (x < 0 || y < 0 || x >= SIZE || y >= SIZE) ? 0 : skel[y * SIZE + x];
-    const ends = [];
-    for (const p of pts) {
-      let n = 0;
-      for (let dy = -1; dy <= 1; dy++)
-        for (let dx = -1; dx <= 1; dx++)
-          if (!(dx === 0 && dy === 0)) n += isSkel(p.x + dx, p.y + dy);
-      if (n === 1) ends.push(p);
-    }
-    endDots = [];
-    for (const p of ends) {
-      let ok = true;
-      for (const d of endDots) {
-        const dx = d.x - p.x, dy = d.y - p.y;
-        if (dx * dx + dy * dy < 30 * 30) { ok = false; break; }
-      }
-      if (ok) endDots.push(p);
-    }
+  function arrowHead(a, b) {  // arrow pointing a -> b, drawn at b
+    const ang = Math.atan2(b.y - a.y, b.x - a.x), L = 15;
+    ctx.fillStyle = "#1565c0";
+    ctx.beginPath();
+    ctx.moveTo(b.x, b.y);
+    ctx.lineTo(b.x - L * Math.cos(ang - 0.45), b.y - L * Math.sin(ang - 0.45));
+    ctx.lineTo(b.x - L * Math.cos(ang + 0.45), b.y - L * Math.sin(ang + 0.45));
+    ctx.closePath(); ctx.fill();
   }
 
   function render() {
     ctx.clearRect(0, 0, SIZE, SIZE);
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
 
-    // black outline of the letter (hollow), like a tracing worksheet
-    ctx.lineJoin = "round"; ctx.lineCap = "round";
-    ctx.strokeStyle = "#2a2a2a"; ctx.lineWidth = 3.5;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.font = "800 250px " + FONT;
-    ctx.strokeText(curChar(), SIZE / 2, SIZE / 2 + 8);
+    // 1) hollow letter body: thick dark, then thinner white on top
+    ctx.strokeStyle = "#2b2b2b"; ctx.fillStyle = "#2b2b2b"; ctx.lineWidth = BODY_OUT;
+    for (const s of curStrokes) {
+      if (isDot(s)) { ctx.beginPath(); ctx.arc(s[0].x, s[0].y, BODY_OUT / 2, 0, 7); ctx.fill(); continue; }
+      ctx.beginPath(); tracePath(ctx, s); ctx.stroke();
+    }
+    ctx.strokeStyle = "#fff"; ctx.fillStyle = "#fff"; ctx.lineWidth = BODY_IN;
+    for (const s of curStrokes) {
+      if (isDot(s)) { ctx.beginPath(); ctx.arc(s[0].x, s[0].y, BODY_IN / 2, 0, 7); ctx.fill(); continue; }
+      ctx.beginPath(); tracePath(ctx, s); ctx.stroke();
+    }
 
-    // dashed line down the middle (the path to trace)
-    ctx.fillStyle = "#555";
-    for (const d of skelDots) { ctx.beginPath(); ctx.arc(d.x, d.y, DOT_R, 0, 7); ctx.fill(); }
+    // 2) dashed centre line
+    ctx.strokeStyle = "#9aa3ad"; ctx.lineWidth = 2.5; ctx.setLineDash([2, 9]);
+    for (const s of curStrokes) {
+      if (isDot(s)) continue;
+      ctx.beginPath(); tracePath(ctx, s); ctx.stroke();
+    }
+    ctx.setLineDash([]);
 
-    // numbered stroke-start markers (best-effort order: top -> bottom, left -> right)
-    const ordered = endDots.slice().sort((a, b) => (a.y - b.y) || (a.x - b.x));
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ordered.forEach((d, i) => {
-      ctx.fillStyle = "#1565c0"; ctx.beginPath(); ctx.arc(d.x, d.y, 11, 0, 7); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.font = "bold 14px Arial, sans-serif";
-      ctx.fillText(String(i + 1), d.x, d.y + 1);
-    });
-
-    // the child's pen
-    ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    // 3) the child's pen
+    ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN;
     for (const st of strokes) {
       if (!st.points.length) continue;
       ctx.beginPath(); ctx.moveTo(st.points[0].x, st.points[0].y);
@@ -201,6 +165,16 @@
       if (st.points.length === 1) ctx.lineTo(st.points[0].x + 0.1, st.points[0].y);
       ctx.stroke();
     }
+
+    // 4) direction arrows + numbered start markers (on top)
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    curStrokes.forEach((s, i) => {
+      if (!isDot(s)) arrowHead(s[s.length - 2], s[s.length - 1]);
+      const a = s[0];
+      ctx.fillStyle = "#1565c0"; ctx.beginPath(); ctx.arc(a.x, a.y, 11, 0, 7); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = "bold 14px Arial, sans-serif";
+      ctx.fillText(String(i + 1), a.x, a.y + 1);
+    });
   }
 
   function pos(e) {
@@ -266,7 +240,7 @@
     el("wordEmoji").textContent = LETTERS[index].e;
     el("wordText").textContent = LETTERS[index].word;
     el("hint").style.opacity = "1"; el("success").classList.add("hidden");
-    buildTarget(); render(); updateProgress();
+    setStrokes(); buildTarget(); render(); updateProgress();
   }
 
   function clearInk() {
@@ -317,12 +291,6 @@
   canvas.addEventListener("touchend", end);
   canvas.addEventListener("touchcancel", end);
 
-  function boot() { loadLetter(0); }
-  if (document.fonts && document.fonts.load) {
-    Promise.all([
-      document.fonts.load('800 250px "Baloo 2"', "ABCabc"),
-      document.fonts.ready
-    ]).then(() => { fontReady = true; boot(); }).catch(boot);
-    setTimeout(() => { if (!fontReady) boot(); }, 1500);
-  } else { boot(); }
+  // letters are drawn from authored stroke paths, so no web font is needed for the canvas
+  loadLetter(0);
 })();
