@@ -30,12 +30,12 @@
   ];
 
   const SIZE = 420;
-  const FONT = '"Noto Sans Thaana", "MV Boli", "Faruma", sans-serif';
-  const PEN = 6;             // thin pen, like tracing dots on a worksheet
-  const DETECT = 24;         // how close the pen must be to the line to "hit" it
-  const DOT_GAP = 16;        // even spacing between the guide dots
-  const DOT_R = 4;           // guide dot radius
-  const WIN_COVERAGE = 0.8;  // must follow (almost) the whole dotted line
+  const FONT = '"Faruma", "Noto Sans Thaana", "MV Boli", sans-serif';
+  const PEN = 7;             // the child's tracing pen
+  const DETECT = 26;         // how close the pen must be to the line to "hit" it
+  const DOT_GAP = 6;         // spacing of centre-line dots (small -> looks like a solid line)
+  const DOT_R = 3;           // centre-line dot radius
+  const END_R = 9;           // big start/end dot radius
 
   // ---- tiny storage ----
   const KEY = "thaana_trace_v1";
@@ -85,7 +85,8 @@
   let drawing = false;
   let targetPixels = null;     // Uint8Array — the dotted skeleton we must trace
   let targetCount = 0;
-  let skelDots = [];           // sub-sampled skeleton points, drawn as the dotted guide
+  let skelDots = [];           // skeleton points -> the blue centre line to trace
+  let endDots = [];            // skeleton endpoints -> the big start/end dots
   let solved = false;
   let moveTick = 0;
   let fontReady = false;
@@ -93,13 +94,16 @@
   // ---- glyph rendering ----
   function glyphFontSize() { return 300; }
 
-  function drawGlyph(c, color) {
-    c.clearRect(0, 0, SIZE, SIZE);
+  function paintGlyph(c, color) {
     c.fillStyle = color;
     c.textAlign = "center";
     c.textBaseline = "middle";
     c.font = "700 " + glyphFontSize() + "px " + FONT;
     c.fillText(LETTERS[index].c, SIZE / 2, SIZE / 2 + 10);
+  }
+  function drawGlyph(c, color) {
+    c.clearRect(0, 0, SIZE, SIZE);
+    paintGlyph(c, color);
   }
 
   /* Zhang-Suen thinning: reduce the filled letter to a 1px centre-line ("skeleton"). */
@@ -163,18 +167,52 @@
       }
       if (ok) skelDots.push(p);
     }
+
+    // endpoints = skeleton pixels with a single neighbour (the start/end of strokes)
+    const isSkel = (x, y) => (x < 0 || y < 0 || x >= SIZE || y >= SIZE) ? 0 : skel[y * SIZE + x];
+    const ends = [];
+    for (const p of pts) {
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++)
+          if (!(dx === 0 && dy === 0)) n += isSkel(p.x + dx, p.y + dy);
+      if (n === 1) ends.push(p);
+    }
+    // keep endpoints that are well separated, so we get clean single dots
+    endDots = [];
+    for (const p of ends) {
+      let ok = true;
+      for (const d of endDots) {
+        const dx = d.x - p.x, dy = d.y - p.y;
+        if (dx * dx + dy * dy < 30 * 30) { ok = false; break; }
+      }
+      if (ok) endDots.push(p);
+    }
   }
 
   function render() {
+    // lined-paper background
     ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, SIZE, SIZE);
-    // dotted guide line (the part you trace), like a worksheet
-    ctx.fillStyle = "#3a3a44";
-    for (const d of skelDots) {
-      ctx.beginPath(); ctx.arc(d.x, d.y, DOT_R, 0, 7); ctx.fill();
+    ctx.fillStyle = "#fbfdff"; ctx.fillRect(0, 0, SIZE, SIZE);
+    ctx.strokeStyle = "rgba(120,140,170,0.16)"; ctx.lineWidth = 1;
+    for (let y = 46; y < SIZE; y += 46) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SIZE, y); ctx.stroke();
+    }
+    // soft blue "halo" = the letter body
+    paintGlyph(ctx, "rgba(79,170,255,0.20)");
+    // blue centre line to follow
+    ctx.fillStyle = "#5aa9ff";
+    for (const d of skelDots) { ctx.beginPath(); ctx.arc(d.x, d.y, DOT_R, 0, 7); ctx.fill(); }
+    // big start/end dots
+    ctx.fillStyle = "#1565c0";
+    for (const d of endDots) {
+      ctx.beginPath(); ctx.arc(d.x, d.y, END_R, 0, 7); ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.beginPath(); ctx.arc(d.x - 2, d.y - 2, END_R * 0.35, 0, 7); ctx.fill();
+      ctx.fillStyle = "#1565c0";
     }
     // the child's pen
-    ctx.strokeStyle = "#1565c0"; ctx.lineWidth = PEN;
+    ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN;
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (const st of strokes) {
       if (st.points.length === 0) continue;
@@ -334,12 +372,14 @@
     loadLetter(0);
   }
   if (document.fonts && document.fonts.load) {
+    const glyphs = LETTERS.map(l => l.c).join("");
     Promise.all([
-      document.fonts.load('700 280px "Noto Sans Thaana"', LETTERS.map(l => l.c).join("")),
+      document.fonts.load('700 300px "Faruma"', glyphs).catch(() => {}),
+      document.fonts.load('700 300px "Noto Sans Thaana"', glyphs).catch(() => {}),
       document.fonts.ready
     ]).then(() => { fontReady = true; boot(); }).catch(boot);
-    // fallback in case font never resolves
-    setTimeout(() => { if (!fontReady) boot(); }, 1500);
+    // fallback in case the font never resolves
+    setTimeout(() => { if (!fontReady) { fontReady = true; boot(); } }, 2500);
   } else {
     boot();
   }
