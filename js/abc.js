@@ -76,11 +76,12 @@
   let index = 0, strokes = [], drawing = false;
   let targetPixels = null, targetCount = 0, solved = false, moveTick = 0;
   let dashDots = [];   // sub-sampled centre line -> single dashed guide
+  let vOff = 0;        // vertical offset so each letter is centred on the midline
 
   function curChar() { return save.lower ? LETTERS[index].c.toLowerCase() : LETTERS[index].c; }
 
   function glyphFontSize() { return 290; }
-  function glyphY() { return SIZE / 2 + glyphFontSize() * 0.04; }
+  function glyphY() { return SIZE / 2 + vOff; }
 
   function paintGlyph(c, color) {
     c.fillStyle = color; c.textAlign = "center"; c.textBaseline = "middle";
@@ -119,9 +120,21 @@
   }
 
   function buildTarget() {
+    // pass 1: draw at centre, measure the letter's vertical bounds
+    vOff = 0;
     mtx.clearRect(0, 0, SIZE, SIZE);
     paintGlyph(mtx, "#000");
-    const data = mtx.getImageData(0, 0, SIZE, SIZE).data;
+    let data = mtx.getImageData(0, 0, SIZE, SIZE).data;
+    let minY = SIZE, maxY = 0, any = false;
+    for (let y = 0; y < SIZE; y++)
+      for (let x = 0; x < SIZE; x++)
+        if (data[(y * SIZE + x) * 4 + 3] > 60) { any = true; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    if (any) vOff = Math.round(SIZE / 2 - (minY + maxY) / 2);
+
+    // pass 2: redraw centred, then build the mask
+    mtx.clearRect(0, 0, SIZE, SIZE);
+    paintGlyph(mtx, "#000");
+    data = mtx.getImageData(0, 0, SIZE, SIZE).data;
     const fill = new Uint8Array(SIZE * SIZE);
     for (let i = 0; i < SIZE * SIZE; i++) if (data[i * 4 + 3] > 60) fill[i] = 1;
     const skel = fill.slice();

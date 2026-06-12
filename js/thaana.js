@@ -90,6 +90,7 @@
   let solved = false;
   let moveTick = 0;
   let fontReady = false;
+  let vOff = 0;                 // vertical offset so each letter is centred on the midline
 
   // ---- glyph rendering ----
   function glyphFontSize() { return 300; }
@@ -99,7 +100,7 @@
     c.textAlign = "center";
     c.textBaseline = "middle";
     c.font = "700 " + glyphFontSize() + "px " + FONT;
-    c.fillText(LETTERS[index].c, SIZE / 2, SIZE / 2 + 10);
+    c.fillText(LETTERS[index].c, SIZE / 2, SIZE / 2 + vOff);
   }
   function drawGlyph(c, color) {
     c.clearRect(0, 0, SIZE, SIZE);
@@ -137,8 +138,19 @@
   }
 
   function buildTarget() {
+    // pass 1: draw at centre, measure the letter's vertical bounds
+    vOff = 0;
     drawGlyph(mtx, "#000");
-    const data = mtx.getImageData(0, 0, SIZE, SIZE).data;
+    let data = mtx.getImageData(0, 0, SIZE, SIZE).data;
+    let minY = SIZE, maxY = 0, any = false;
+    for (let y = 0; y < SIZE; y++)
+      for (let x = 0; x < SIZE; x++)
+        if (data[(y * SIZE + x) * 4 + 3] > 60) { any = true; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    if (any) vOff = Math.round(SIZE / 2 - (minY + maxY) / 2);
+
+    // pass 2: redraw centred, then build the mask from that
+    drawGlyph(mtx, "#000");
+    data = mtx.getImageData(0, 0, SIZE, SIZE).data;
     const fill = new Uint8Array(SIZE * SIZE);
     for (let i = 0; i < SIZE * SIZE; i++) if (data[i * 4 + 3] > 60) fill[i] = 1;
 
