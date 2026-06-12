@@ -52,15 +52,16 @@
     root.querySelector('#b-again').addEventListener('click', reset);
     root.querySelector('#b-winhome').addEventListener('click', window.goHome);
 
+    // hold buttons: capture the pointer so the hold never "slips" off the button
     const go = root.querySelector('#b-go');
-    go.addEventListener('pointerdown', e => { goHeld = true; e.preventDefault(); });
-    go.addEventListener('pointerleave', () => { goHeld = false; });
+    go.addEventListener('pointerdown', e => { goHeld = true; try { go.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); });
+    go.addEventListener('pointerup', () => { goHeld = false; });
+    go.addEventListener('pointercancel', () => { goHeld = false; });
 
     const jb = root.querySelector('#b-jump');
-    jb.addEventListener('pointerdown', e => { jumpHeld = true; jump(); e.preventDefault(); });
-    jb.addEventListener('pointerleave', () => { jumpHeld = false; });
-
-    window.addEventListener('pointerup', () => { goHeld = false; jumpHeld = false; });
+    jb.addEventListener('pointerdown', e => { jumpHeld = true; jump(); try { jb.setPointerCapture(e.pointerId); } catch (x) {} e.preventDefault(); });
+    jb.addEventListener('pointerup', () => { jumpHeld = false; });
+    jb.addEventListener('pointercancel', () => { jumpHeld = false; });
 
     // keyboard: → drive (+backflip in air), Space/↑ jump (+frontflip in air)
     window.addEventListener('keydown', e => {
