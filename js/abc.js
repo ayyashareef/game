@@ -31,8 +31,10 @@
 
   const SIZE = 420;
   const FONT = '"Baloo 2", "Comic Sans MS", sans-serif';
-  const BRUSH = 46;          // wide enough that a full trace covers each stroke edge-to-edge
-  const WIN_COVERAGE = 0.9;  // must trace essentially the whole letter
+  const PEN = 5;             // thin pen, like tracing dots on a worksheet
+  const DETECT = 24;         // how close the pen must be to the line to "hit" it
+  const DOT_GAP = 16;        // even spacing between the guide dots
+  const DOT_R = 4;           // guide dot radius
 
   // ---- storage ----
   const KEY = "abc_trace_v1";
@@ -74,7 +76,7 @@
   const itx = maskInk.getContext("2d", { willReadFrequently: true });
 
   let index = 0, strokes = [], drawing = false;
-  let targetPixels = null, targetCount = 0, solved = false, moveTick = 0, fontReady = false;
+  let targetPixels = null, targetCount = 0, skelDots = [], solved = false, moveTick = 0, fontReady = false;
 
   function curChar() { return save.lower ? LETTERS[index].c.toLowerCase() : LETTERS[index].c; }
 
@@ -85,23 +87,77 @@
     c.fillText(curChar(), SIZE / 2, SIZE / 2 + 8);
   }
 
+  /* Zhang-Suen thinning: reduce the filled letter to a 1px centre-line ("skeleton"). */
+  function thin(g, w, h) {
+    const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : g[y * w + x];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let step = 0; step < 2; step++) {
+        const rem = [];
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            if (!g[y * w + x]) continue;
+            const p2 = at(x, y - 1), p3 = at(x + 1, y - 1), p4 = at(x + 1, y), p5 = at(x + 1, y + 1),
+                  p6 = at(x, y + 1), p7 = at(x - 1, y + 1), p8 = at(x - 1, y), p9 = at(x - 1, y - 1);
+            const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+            if (B < 2 || B > 6) continue;
+            const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
+            let A = 0;
+            for (let i = 0; i < 8; i++) if (seq[i] === 0 && seq[i + 1] === 1) A++;
+            if (A !== 1) continue;
+            if (step === 0) { if (p2 * p4 * p6 !== 0 || p4 * p6 * p8 !== 0) continue; }
+            else { if (p2 * p4 * p8 !== 0 || p2 * p6 * p8 !== 0) continue; }
+            rem.push(y * w + x);
+          }
+        }
+        if (rem.length) { changed = true; for (const i of rem) g[i] = 0; }
+      }
+    }
+    return g;
+  }
+
   function buildTarget() {
     drawGlyph(mtx, "#000");
     const data = mtx.getImageData(0, 0, SIZE, SIZE).data;
-    targetPixels = new Uint8Array(SIZE * SIZE); targetCount = 0;
-    for (let i = 0; i < SIZE * SIZE; i++) if (data[i * 4 + 3] > 40) { targetPixels[i] = 1; targetCount++; }
+    const fill = new Uint8Array(SIZE * SIZE);
+    for (let i = 0; i < SIZE * SIZE; i++) if (data[i * 4 + 3] > 60) fill[i] = 1;
+
+    const skel = fill.slice();
+    thin(skel, SIZE, SIZE);
+
+    targetPixels = skel;
+    targetCount = 0;
+    for (let i = 0; i < skel.length; i++) if (skel[i]) targetCount++;
+
+    // sub-sample the skeleton into evenly spaced guide dots
+    const pts = [];
+    for (let y = 0; y < SIZE; y++)
+      for (let x = 0; x < SIZE; x++)
+        if (skel[y * SIZE + x]) pts.push({ x, y });
+
+    skelDots = [];
+    const minSq = DOT_GAP * DOT_GAP;
+    for (const p of pts) {
+      let ok = true;
+      for (const d of skelDots) {
+        const dx = d.x - p.x, dy = d.y - p.y;
+        if (dx * dx + dy * dy < minSq) { ok = false; break; }
+      }
+      if (ok) skelDots.push(p);
+    }
   }
 
   function render() {
     ctx.clearRect(0, 0, SIZE, SIZE);
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, SIZE, SIZE);
-    drawGlyph(ctx, "rgba(21,101,192,0.16)");
-    // outline for definition
-    ctx.strokeStyle = "rgba(21,101,192,0.5)"; ctx.lineWidth = 2;
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "800 250px " + FONT;
-    ctx.strokeText(curChar(), SIZE / 2, SIZE / 2 + 8);
-    // ink
-    ctx.strokeStyle = "#e53935"; ctx.lineWidth = BRUSH; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    // dotted guide line (the part you trace), like a worksheet
+    ctx.fillStyle = "#3a3a44";
+    for (const d of skelDots) {
+      ctx.beginPath(); ctx.arc(d.x, d.y, DOT_R, 0, 7); ctx.fill();
+    }
+    // the child's pen
+    ctx.strokeStyle = "#e53935"; ctx.lineWidth = PEN; ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (const st of strokes) {
       if (!st.points.length) continue;
       ctx.beginPath(); ctx.moveTo(st.points[0].x, st.points[0].y);
@@ -134,7 +190,7 @@
     const st = strokes[strokes.length - 1];
     const last = st.points[st.points.length - 1];
     st.points.push(p);
-    itx.strokeStyle = "#fff"; itx.lineWidth = BRUSH; itx.lineCap = "round"; itx.lineJoin = "round";
+    itx.strokeStyle = "#fff"; itx.lineWidth = DETECT; itx.lineCap = "round"; itx.lineJoin = "round";
     itx.beginPath(); itx.moveTo(last ? last.x : p.x, last ? last.y : p.y); itx.lineTo(p.x, p.y); itx.stroke();
   }
 
