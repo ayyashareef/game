@@ -15,6 +15,9 @@ class Bike {
     this.crashed = false;
     this.crashTimer = 0;
 
+    this.jumpV = 7.6;       // jump strength (reaches ~170px high)
+    this.jumpCd = 0;        // cooldown so it hops once per landing
+
     this.reset(terrain.startX, terrain.startY);
   }
 
@@ -137,6 +140,7 @@ class Bike {
 
   /* run a frame (a couple of substeps for stability) */
   update(input, frameDt) {
+    this.justJumped = false;
     if (this.crashed) {
       this.crashTimer -= frameDt;
       // let it settle, then game will respawn
@@ -144,6 +148,17 @@ class Bike {
       for (let i = 0; i < 2; i++) this.physicsOnly(dt);
       return;
     }
+    // ---- jump: a hop straight up when on the ground ----
+    if (this.jumpCd > 0) this.jumpCd -= frameDt;
+    if (input.jump && (this.rearGround || this.frontGround) && this.jumpCd <= 0) {
+      this.rear.oy = this.rear.y + this.jumpV;   // verlet velocity = pos - prev (upward)
+      this.front.oy = this.front.y + this.jumpV;
+      this.jumpCd = 0.5;
+      this.justJumped = true;
+    } else {
+      this.justJumped = false;
+    }
+
     const dt = 1 / 120;
     for (let i = 0; i < 2; i++) this.step(input, dt);
 

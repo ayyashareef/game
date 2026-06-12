@@ -133,27 +133,44 @@ canvas { display: block; width: 100%; height: 100%; }
 /* ---------- Touch controls ---------- */
 #touchControls {
   position: absolute; bottom: 0; left: 0; right: 0;
-  display: flex; justify-content: space-between;
-  padding: 18px 18px 26px; z-index: 15; pointer-events: none;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  padding: 14px 16px max(20px, env(safe-area-inset-bottom)); z-index: 15; pointer-events: none;
+  gap: 10px;
 }
+.ctrl-group { display: flex; align-items: flex-end; gap: 12px; pointer-events: none; }
 .ctrl {
   pointer-events: auto;
   font-family: inherit; font-weight: bold; color: #fff;
   border: 5px solid #fff; cursor: pointer;
   border-radius: 50%;
   box-shadow: 0 7px 0 rgba(0,0,0,0.25);
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
 }
+.ctrl small { font-size: 0.34em; letter-spacing: 1px; margin-top: 2px; }
 .ctrl:active { transform: translateY(5px); box-shadow: 0 2px 0 rgba(0,0,0,0.25); }
 .ctrl-back {
-  width: clamp(74px, 20vw, 100px); height: clamp(74px, 20vw, 100px);
-  font-size: clamp(26px, 7vw, 40px);
+  width: clamp(66px, 17vw, 96px); height: clamp(66px, 17vw, 96px);
+  font-size: clamp(24px, 6vw, 38px);
   background: linear-gradient(#ef5350, #e53935);
 }
+.ctrl-jump {
+  width: clamp(72px, 18vw, 104px); height: clamp(72px, 18vw, 104px);
+  font-size: clamp(26px, 7vw, 40px);
+  background: linear-gradient(#ffb74d, #fb8c00);
+}
 .ctrl-go {
-  width: clamp(96px, 26vw, 140px); height: clamp(96px, 26vw, 140px);
-  font-size: clamp(22px, 5.5vw, 32px);
+  width: clamp(88px, 22vw, 132px); height: clamp(88px, 22vw, 132px);
+  font-size: clamp(22px, 5.2vw, 30px);
   background: linear-gradient(#66bb6a, #43a047);
+}
+
+/* Landscape phones: keep controls compact so they don't cover the action */
+@media (max-height: 480px) {
+  #touchControls { padding: 8px 12px 10px; }
+  .ctrl-back { width: 62px; height: 62px; font-size: 24px; }
+  .ctrl-jump { width: 66px; height: 66px; font-size: 26px; }
+  .ctrl-go { width: 84px; height: 84px; font-size: 22px; }
+  #hud { padding: 8px 10px; }
 }
 
 .win-stars { font-size: clamp(40px, 12vw, 72px); margin: 8px 0; letter-spacing: 6px; }

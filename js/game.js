@@ -21,7 +21,7 @@
   let terrain = null, bike = null;
   let cam = { x: 0, y: 0 };
   let collected = 0;
-  let input = { gas: false, brake: false };
+  let input = { gas: false, brake: false, jump: false };
   let last = performance.now();
   let clouds = [];
 
@@ -128,15 +128,18 @@
   }
   bindHold(el("ctrlGo"), () => input.gas = true, () => input.gas = false);
   bindHold(el("ctrlBack"), () => input.brake = true, () => input.brake = false);
+  bindHold(el("ctrlJump"), () => input.jump = true, () => input.jump = false);
 
   window.addEventListener("keydown", (e) => {
     if (e.repeat) return;
-    if (e.key === "ArrowRight" || e.key === "d" || e.key === " ") input.gas = true;
+    if (e.key === "ArrowRight" || e.key === "d") input.gas = true;
     if (e.key === "ArrowLeft" || e.key === "a") input.brake = true;
+    if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") input.jump = true;
   });
   window.addEventListener("keyup", (e) => {
-    if (e.key === "ArrowRight" || e.key === "d" || e.key === " ") input.gas = false;
+    if (e.key === "ArrowRight" || e.key === "d") input.gas = false;
     if (e.key === "ArrowLeft" || e.key === "a") input.brake = false;
+    if (e.key === "ArrowUp" || e.key === "w" || e.key === " ") input.jump = false;
   });
 
   // ---------- buttons ----------
@@ -160,10 +163,11 @@
     if (scene !== "play") return;
 
     bike.update(input, dt);
+    if (bike.justJumped) Sound.jump();
 
-    // collect stars
+    // collect stars (a bit larger reach so jumps grab them easily)
     for (const s of terrain.stars) {
-      if (!s.got && Math.hypot(s.x - bike.cx, s.y - bike.cy) < 48) {
+      if (!s.got && Math.hypot(s.x - bike.cx, s.y - bike.cy) < 56) {
         s.got = true; collected++; updateHud(); Sound.star();
       }
     }

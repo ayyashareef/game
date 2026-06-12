@@ -72,7 +72,8 @@ function buildTerrain(level, baseY) {
   const gap = level.length / (level.stars + 1);
   for (let i = 1; i <= level.stars; i++) {
     const sx = gap * i + (rng() - 0.5) * gap * 0.4;
-    stars.push({ x: sx, y: terrainAt(points, dx, sx) - (60 + rng() * 70), got: false });
+    // height above ground — kept within a jump's reach (~170px apex) so every star is collectable
+    stars.push({ x: sx, y: terrainAt(points, dx, sx) - (45 + rng() * 80), got: false });
   }
 
   return { points, dx, stars, finishX, startX: 160, startY: baseY };

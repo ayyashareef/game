@@ -70,6 +70,7 @@ const Sound = (function () {
     click() { blip(660, 0.08, "square", 0.2); },
     star() { blip(880, 0.09, "sine", 0.3); setTimeout(() => blip(1320, 0.12, "sine", 0.28), 70); },
     bump() { blip(120, 0.12, "sawtooth", 0.18); },
+    jump() { blip(440, 0.1, "square", 0.22); setTimeout(() => blip(740, 0.12, "square", 0.2), 60); },
     engine, stopEngine,
 
     win() {
