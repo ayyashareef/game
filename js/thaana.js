@@ -191,26 +191,22 @@
   }
 
   function render() {
-    // lined-paper background
     ctx.clearRect(0, 0, SIZE, SIZE);
-    ctx.fillStyle = "#fbfdff"; ctx.fillRect(0, 0, SIZE, SIZE);
-    ctx.strokeStyle = "rgba(120,140,170,0.16)"; ctx.lineWidth = 1;
-    for (let y = 46; y < SIZE; y += 46) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SIZE, y); ctx.stroke();
-    }
-    // soft blue "halo" = the letter body
-    paintGlyph(ctx, "rgba(79,170,255,0.20)");
-    // blue centre line to follow
-    ctx.fillStyle = "#5aa9ff";
-    for (const d of skelDots) { ctx.beginPath(); ctx.arc(d.x, d.y, DOT_R, 0, 7); ctx.fill(); }
-    // big start/end dots
-    ctx.fillStyle = "#1565c0";
-    for (const d of endDots) {
-      ctx.beginPath(); ctx.arc(d.x, d.y, END_R, 0, 7); ctx.fill();
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
-      ctx.beginPath(); ctx.arc(d.x - 2, d.y - 2, END_R * 0.35, 0, 7); ctx.fill();
-      ctx.fillStyle = "#1565c0";
-    }
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, SIZE, SIZE);
+    // lined paper + dashed midline
+    ctx.strokeStyle = "rgba(44,59,102,0.07)"; ctx.lineWidth = 1.5;
+    for (let y = SIZE * 0.13; y < SIZE - 1; y += SIZE * 0.13) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SIZE, y); ctx.stroke(); }
+    ctx.strokeStyle = "rgba(44,59,102,0.16)"; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
+    ctx.beginPath(); ctx.moveTo(SIZE * 0.08, SIZE / 2); ctx.lineTo(SIZE * 0.92, SIZE / 2); ctx.stroke(); ctx.setLineDash([]);
+
+    // the letter guide: faint fill + dashed outline (matches the design)
+    paintGlyph(ctx, "rgba(44,59,102,0.10)");
+    ctx.lineWidth = 3; ctx.setLineDash([5, 9]); ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(44,59,102,0.34)";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "700 " + glyphFontSize() + "px " + FONT;
+    ctx.strokeText(LETTERS[index].c, SIZE / 2, SIZE / 2 + 10);
+    ctx.setLineDash([]);
+
     // the child's pen
     ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN;
     ctx.lineCap = "round"; ctx.lineJoin = "round";

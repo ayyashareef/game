@@ -32,8 +32,7 @@
   const SIZE = 420;
   const PEN = 7;             // the child's tracing pen
   const DETECT = 26;         // how close the pen must be to the line to "hit" it
-  const GS = 2.9, GOFF = 65; // scale + offset mapping the 0..100 stroke box to canvas
-  const BODY_OUT = 34, BODY_IN = 27; // letter thickness (black then white -> hollow outline)
+  const FONT = '"Fredoka", "Baloo 2", system-ui, sans-serif';
 
   // ---- storage ----
   const KEY = "abc_trace_v1";
@@ -76,93 +75,79 @@
 
   let index = 0, strokes = [], drawing = false;
   let targetPixels = null, targetCount = 0, solved = false, moveTick = 0;
-  let curStrokes = [];   // current letter's strokes, scaled to canvas coords
 
   function curChar() { return save.lower ? LETTERS[index].c.toLowerCase() : LETTERS[index].c; }
 
-  // load + scale the authored strokes for the current letter/case
-  function setStrokes() {
-    const set = save.lower ? window.ABC_STROKES.low : window.ABC_STROKES.up;
-    const key = save.lower ? LETTERS[index].c.toLowerCase() : LETTERS[index].c;
-    const raw = (set && set[key]) || [];
-    curStrokes = raw.map(s => s.map(p => ({ x: GOFF + p[0] * GS, y: GOFF + p[1] * GS })));
+  function glyphFontSize() { return 290; }
+  function glyphY() { return SIZE / 2 + glyphFontSize() * 0.04; }
+
+  function paintGlyph(c, color) {
+    c.fillStyle = color; c.textAlign = "center"; c.textBaseline = "middle";
+    c.font = "700 " + glyphFontSize() + "px " + FONT;
+    c.fillText(curChar(), SIZE / 2, glyphY());
   }
 
-  function isDot(s) {
-    if (s.length < 2) return true;
-    const a = s[0], b = s[s.length - 1];
-    return Math.hypot(b.x - a.x, b.y - a.y) < 6;
-  }
-
-  // draw a smooth path through the stroke points
-  function tracePath(c, s) {
-    if (s.length === 1) { c.moveTo(s[0].x, s[0].y); c.lineTo(s[0].x + 0.1, s[0].y); return; }
-    c.moveTo(s[0].x, s[0].y);
-    for (let i = 1; i < s.length - 1; i++) {
-      const mx = (s[i].x + s[i + 1].x) / 2, my = (s[i].y + s[i + 1].y) / 2;
-      c.quadraticCurveTo(s[i].x, s[i].y, mx, my);
+  /* Zhang-Suen thinning -> 1px centre-line of the letter (what we grade against) */
+  function thin(g, w, h) {
+    const at = (x, y) => (x < 0 || y < 0 || x >= w || y >= h) ? 0 : g[y * w + x];
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let step = 0; step < 2; step++) {
+        const rem = [];
+        for (let y = 1; y < h - 1; y++) {
+          for (let x = 1; x < w - 1; x++) {
+            if (!g[y * w + x]) continue;
+            const p2 = at(x, y - 1), p3 = at(x + 1, y - 1), p4 = at(x + 1, y), p5 = at(x + 1, y + 1),
+                  p6 = at(x, y + 1), p7 = at(x - 1, y + 1), p8 = at(x - 1, y), p9 = at(x - 1, y - 1);
+            const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+            if (B < 2 || B > 6) continue;
+            const seq = [p2, p3, p4, p5, p6, p7, p8, p9, p2];
+            let A = 0;
+            for (let i = 0; i < 8; i++) if (seq[i] === 0 && seq[i + 1] === 1) A++;
+            if (A !== 1) continue;
+            if (step === 0) { if (p2 * p4 * p6 !== 0 || p4 * p6 * p8 !== 0) continue; }
+            else { if (p2 * p4 * p8 !== 0 || p2 * p6 * p8 !== 0) continue; }
+            rem.push(y * w + x);
+          }
+        }
+        if (rem.length) { changed = true; for (const i of rem) g[i] = 0; }
+      }
     }
-    const n = s.length;
-    c.quadraticCurveTo(s[n - 2].x, s[n - 2].y, s[n - 1].x, s[n - 1].y);
+    return g;
   }
 
   function buildTarget() {
-    // rasterize the centre lines -> the pixels the child must cover
     mtx.clearRect(0, 0, SIZE, SIZE);
-    mtx.strokeStyle = "#000"; mtx.fillStyle = "#000";
-    mtx.lineCap = "round"; mtx.lineJoin = "round"; mtx.lineWidth = 7;
-    for (const s of curStrokes) {
-      if (isDot(s)) { mtx.beginPath(); mtx.arc(s[0].x, s[0].y, 6, 0, 7); mtx.fill(); continue; }
-      mtx.beginPath(); tracePath(mtx, s); mtx.stroke();
-    }
+    paintGlyph(mtx, "#000");
     const data = mtx.getImageData(0, 0, SIZE, SIZE).data;
-    targetPixels = new Uint8Array(SIZE * SIZE);
-    targetCount = 0;
-    for (let i = 0; i < SIZE * SIZE; i++) if (data[i * 4 + 3] > 40) { targetPixels[i] = 1; targetCount++; }
-  }
-
-  function arrowHead(a, b) {  // arrow pointing a -> b, drawn at b
-    const ang = Math.atan2(b.y - a.y, b.x - a.x), L = 15;
-    ctx.fillStyle = "#1565c0";
-    ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(b.x - L * Math.cos(ang - 0.45), b.y - L * Math.sin(ang - 0.45));
-    ctx.lineTo(b.x - L * Math.cos(ang + 0.45), b.y - L * Math.sin(ang + 0.45));
-    ctx.closePath(); ctx.fill();
+    const fill = new Uint8Array(SIZE * SIZE);
+    for (let i = 0; i < SIZE * SIZE; i++) if (data[i * 4 + 3] > 60) fill[i] = 1;
+    const skel = fill.slice();
+    thin(skel, SIZE, SIZE);
+    targetPixels = skel; targetCount = 0;
+    for (let i = 0; i < skel.length; i++) if (skel[i]) targetCount++;
   }
 
   function render() {
     ctx.clearRect(0, 0, SIZE, SIZE);
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, SIZE, SIZE);
-    // faint lined paper + dashed midline
-    ctx.strokeStyle = "rgba(70,90,150,0.07)"; ctx.lineWidth = 1.5;
+    // lined paper + dashed midline
+    ctx.strokeStyle = "rgba(44,59,102,0.07)"; ctx.lineWidth = 1.5;
     for (let y = SIZE * 0.13; y < SIZE - 1; y += SIZE * 0.13) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SIZE, y); ctx.stroke(); }
-    ctx.strokeStyle = "rgba(70,90,150,0.14)"; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
+    ctx.strokeStyle = "rgba(44,59,102,0.16)"; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
     ctx.beginPath(); ctx.moveTo(SIZE * 0.08, SIZE / 2); ctx.lineTo(SIZE * 0.92, SIZE / 2); ctx.stroke(); ctx.setLineDash([]);
-    ctx.lineCap = "round"; ctx.lineJoin = "round";
 
-    // 1) hollow letter body: thick dark, then thinner white on top
-    ctx.strokeStyle = "#2b2b2b"; ctx.fillStyle = "#2b2b2b"; ctx.lineWidth = BODY_OUT;
-    for (const s of curStrokes) {
-      if (isDot(s)) { ctx.beginPath(); ctx.arc(s[0].x, s[0].y, BODY_OUT / 2, 0, 7); ctx.fill(); continue; }
-      ctx.beginPath(); tracePath(ctx, s); ctx.stroke();
-    }
-    ctx.strokeStyle = "#fff"; ctx.fillStyle = "#fff"; ctx.lineWidth = BODY_IN;
-    for (const s of curStrokes) {
-      if (isDot(s)) { ctx.beginPath(); ctx.arc(s[0].x, s[0].y, BODY_IN / 2, 0, 7); ctx.fill(); continue; }
-      ctx.beginPath(); tracePath(ctx, s); ctx.stroke();
-    }
-
-    // 2) dashed centre line
-    ctx.strokeStyle = "#9aa3ad"; ctx.lineWidth = 2.5; ctx.setLineDash([2, 9]);
-    for (const s of curStrokes) {
-      if (isDot(s)) continue;
-      ctx.beginPath(); tracePath(ctx, s); ctx.stroke();
-    }
+    // the letter guide: faint fill + dashed outline (matches the design)
+    paintGlyph(ctx, "rgba(44,59,102,0.10)");
+    ctx.lineWidth = 3; ctx.setLineDash([5, 9]); ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(44,59,102,0.34)";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "700 " + glyphFontSize() + "px " + FONT;
+    ctx.strokeText(curChar(), SIZE / 2, glyphY());
     ctx.setLineDash([]);
 
-    // 3) the child's pen
-    ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN;
+    // the child's pen
+    ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN; ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (const st of strokes) {
       if (!st.points.length) continue;
       ctx.beginPath(); ctx.moveTo(st.points[0].x, st.points[0].y);
@@ -170,16 +155,6 @@
       if (st.points.length === 1) ctx.lineTo(st.points[0].x + 0.1, st.points[0].y);
       ctx.stroke();
     }
-
-    // 4) direction arrows + numbered start markers (on top)
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    curStrokes.forEach((s, i) => {
-      if (!isDot(s)) arrowHead(s[s.length - 2], s[s.length - 1]);
-      const a = s[0];
-      ctx.fillStyle = "#1565c0"; ctx.beginPath(); ctx.arc(a.x, a.y, 11, 0, 7); ctx.fill();
-      ctx.fillStyle = "#fff"; ctx.font = "bold 14px Arial, sans-serif";
-      ctx.fillText(String(i + 1), a.x, a.y + 1);
-    });
   }
 
   function pos(e) {
@@ -245,7 +220,7 @@
     el("wordEmoji").textContent = LETTERS[index].e;
     el("wordText").textContent = "";   // word shown in the subtitle ("A is for Apple")
     el("hint").style.opacity = "1"; el("success").classList.add("hidden");
-    setStrokes(); buildTarget(); render(); updateProgress();
+    buildTarget(); render(); updateProgress();
   }
 
   function clearInk() {
