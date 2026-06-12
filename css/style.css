@@ -2,7 +2,7 @@
 
 html, body {
   width: 100%; height: 100%; overflow: hidden;
-  font-family: "Comic Sans MS", "Baloo", "Segoe UI", system-ui, sans-serif;
+  font-family: "Fredoka", "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
   background: #2b1055; user-select: none;
   touch-action: none;
 }
@@ -21,7 +21,11 @@ canvas { display: block; width: 100%; height: 100%; }
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: 18px; padding: 20px;
-  background: linear-gradient(160deg, #4fc3f7 0%, #81d4fa 40%, #aed581 100%);
+  color: #2c3b66;
+  background:
+    radial-gradient(120% 90% at 15% 5%, #eaf4ff 0%, transparent 55%),
+    radial-gradient(120% 90% at 90% 0%, #fdeef3 0%, transparent 50%),
+    linear-gradient(170deg, #eaf4ff 0%, #f1ecff 55%, #fdeef3 100%);
   z-index: 20;
 }
 
@@ -43,12 +47,10 @@ canvas { display: block; width: 100%; height: 100%; }
 }
 
 .screen-title {
-  font-size: clamp(26px, 6vw, 44px);
-  color: #fff; text-shadow: 0 4px 0 #00000033, 3px 3px 0 #0002;
+  font-size: clamp(26px, 6vw, 44px); font-weight: 700;
+  color: #2c3b66; letter-spacing: -.5px;
   margin-bottom: 6px;
 }
-
-#levels .screen-title { color: #fff; }
 
 .subtitle {
   font-size: clamp(15px, 3.5vw, 22px);
@@ -117,17 +119,19 @@ canvas { display: block; width: 100%; height: 100%; }
 #hud > * { pointer-events: auto; }
 
 .hud-btn {
-  font-family: inherit; font-size: clamp(20px, 5vw, 26px);
-  width: 54px; height: 54px; border-radius: 16px; border: 4px solid #fff;
-  background: rgba(255,255,255,0.85); cursor: pointer;
-  box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+  font-family: inherit; font-size: clamp(20px, 5vw, 24px);
+  width: 50px; height: 50px; border-radius: 15px; border: none;
+  background: rgba(255,255,255,0.92); color: #2c3b66; cursor: pointer;
+  display: grid; place-items: center;
+  box-shadow: 0 6px 14px rgba(40,70,110,.2);
+  transition: transform .16s ease;
 }
-.hud-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.2); }
+.hud-btn:active { transform: scale(.9); }
 
 .star-count {
-  font-size: clamp(20px, 5vw, 28px); font-weight: bold; color: #fff;
-  background: rgba(0,0,0,0.25); padding: 8px 18px; border-radius: 20px;
-  text-shadow: 0 2px 0 #0005;
+  display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  font-size: clamp(20px, 5vw, 24px); font-weight: 700; color: #fff;
+  background: rgba(44,59,102,0.55); padding: 8px 20px; border-radius: 999px;
 }
 
 /* ---------- Touch controls ---------- */

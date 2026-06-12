@@ -134,6 +134,11 @@
   function render() {
     ctx.clearRect(0, 0, SIZE, SIZE);
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, SIZE, SIZE);
+    // faint lined paper + dashed midline
+    ctx.strokeStyle = "rgba(70,90,150,0.07)"; ctx.lineWidth = 1.5;
+    for (let y = SIZE * 0.13; y < SIZE - 1; y += SIZE * 0.13) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SIZE, y); ctx.stroke(); }
+    ctx.strokeStyle = "rgba(70,90,150,0.14)"; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
+    ctx.beginPath(); ctx.moveTo(SIZE * 0.08, SIZE / 2); ctx.lineTo(SIZE * 0.92, SIZE / 2); ctx.stroke(); ctx.setLineDash([]);
     ctx.lineCap = "round"; ctx.lineJoin = "round";
 
     // 1) hollow letter body: thick dark, then thinner white on top
@@ -238,7 +243,7 @@
     el("letterName").textContent = LETTERS[index].c + " " + LETTERS[index].c.toLowerCase();
     el("letterSub").textContent = LETTERS[index].c + " is for " + LETTERS[index].word;
     el("wordEmoji").textContent = LETTERS[index].e;
-    el("wordText").textContent = LETTERS[index].word;
+    el("wordText").textContent = "";   // word shown in the subtitle ("A is for Apple")
     el("hint").style.opacity = "1"; el("success").classList.add("hidden");
     setStrokes(); buildTarget(); render(); updateProgress();
   }

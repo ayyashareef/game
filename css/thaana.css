@@ -1,4 +1,4 @@
-/* Faruma Thaana font: use the one installed on the device, else load from CDN */
+/* Faruma Thaana font: device font first, else CDN */
 @font-face {
   font-family: "Faruma";
   src: local("Faruma"), local("MV Faruma"),
@@ -7,103 +7,102 @@
   font-display: swap;
 }
 
+/* Thaana trace screen — matches the "Fun Games" design system (coral accent) */
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --ink: #2c3b66; --ink-soft: #6b78a0;
+  --accent: #ff5d7d; --accent-soft: #ffe6ec;
+  --font: 'Fredoka', "Comic Sans MS", system-ui, sans-serif;
+  --thaana: 'Faruma', 'Noto Sans Thaana', 'MV Boli', sans-serif;
+}
 html, body {
   width: 100%; height: 100%; overflow: hidden;
-  font-family: "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
-  background: linear-gradient(165deg, #eaf3fc 0%, #f7fbff 60%, #fef6ee 100%);
-  color: #25384d; user-select: none; touch-action: none;
+  font-family: var(--font); color: var(--ink); user-select: none; touch-action: none;
+  background:
+    radial-gradient(100% 60% at 50% 0%, #ffeef2 0%, transparent 60%),
+    linear-gradient(180deg, #fef3f6 0%, #f1ecff 60%, #eef4ff 100%);
 }
-.thaana-font { font-family: "Faruma", "Noto Sans Thaana", "MV Boli", sans-serif; }
+.thaana-font { font-family: var(--thaana); }
 .hidden { display: none !important; }
 
-#app {
-  width: 100vw; height: 100vh;
-  display: flex; flex-direction: column; align-items: center;
-  padding: 12px; gap: 12px;
-}
+#app { width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 16px 18px 20px; gap: 4px; }
 
-/* ---- header ---- */
-header { width: min(560px, 100%); display: flex; align-items: center; gap: 10px; }
-.title-wrap { flex: 1; text-align: center; }
-.letter-name { font-size: clamp(24px, 6vw, 34px); font-weight: bold; color: #1565c0; }
-.letter-sub { font-size: clamp(13px, 3.4vw, 17px); color: #5a7088; }
-
+header { width: 100%; max-width: 760px; display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; gap: 12px; }
+.title-wrap { text-align: center; }
+.letter-name { font-size: 30px; font-weight: 700; color: var(--accent); line-height: 1; }
+.letter-sub { font-size: 14.5px; font-weight: 500; color: var(--ink-soft); margin-top: 3px; }
 .top-btn {
-  width: 50px; height: 50px; border-radius: 16px; border: none;
-  background: #fff; color: #1565c0; cursor: pointer;
-  font-size: 22px; display: flex; align-items: center; justify-content: center;
-  text-decoration: none; box-shadow: 0 4px 10px rgba(21,101,192,.18);
+  width: 52px; height: 52px; border: none; border-radius: 16px;
+  background: #fff; color: var(--accent); font-size: 22px; cursor: pointer;
+  display: grid; place-items: center; text-decoration: none;
+  box-shadow: 0 7px 16px rgba(70,90,150,.16); transition: transform .16s ease, box-shadow .16s ease;
 }
-.top-btn:active { transform: translateY(2px); box-shadow: 0 2px 5px rgba(21,101,192,.18); }
+.top-btn:hover { transform: translateY(-2px); }
+.top-btn:active { transform: scale(.92); }
 
-/* ---- progress dots ---- */
-#progressBar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; width: min(560px, 100%); }
-.dot { width: 13px; height: 13px; border-radius: 50%; background: #d4e3f3; }
-.dot.done { background: #ffc83d; }
-.dot.current { transform: scale(1.45); background: #1565c0; }
+#progressBar { display: flex; gap: 7px; flex-wrap: wrap; justify-content: center; max-width: 720px; margin: 14px auto 4px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; background: #ccd6ec; transition: transform .2s ease, background .2s ease; }
+.dot.done { background: #ffc23c; }
+.dot.current { background: var(--accent); transform: scale(1.5); }
 
-/* ---- main tracing ---- */
-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%; }
+main { flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 0; }
 .big-letter {
-  font-family: "Faruma", "Noto Sans Thaana", "MV Boli", sans-serif;
-  font-size: clamp(34px, 9vw, 50px); font-weight: 700; color: #1565c0;
-  background: #fff; padding: 2px 26px; border-radius: 16px;
-  box-shadow: 0 4px 10px rgba(21,101,192,.12);
+  width: 64px; height: 64px; border-radius: 18px; background: #fff;
+  display: grid; place-items: center; font-size: 34px; color: var(--accent);
+  font-family: var(--thaana); font-weight: 700;
+  box-shadow: 0 8px 18px rgba(70,90,150,.14);
 }
+
 .canvas-box {
-  position: relative;
-  width: min(74vh, 92vw, 460px); aspect-ratio: 1/1;
-  background: #fff; border-radius: 28px;
-  box-shadow: 0 14px 34px rgba(21,101,192,.18);
+  position: relative; width: min(440px, 90vw); aspect-ratio: 1/1; max-height: 46vh;
+  border-radius: 28px; background: #fff; overflow: hidden;
+  box-shadow: 0 18px 40px rgba(70,90,150,.18), inset 0 0 0 1px rgba(70,90,150,.05); touch-action: none;
 }
-#trace { width: 100%; height: 100%; display: block; border-radius: 24px; touch-action: none; }
+#trace { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 .hint {
-  position: absolute; bottom: 12px; left: 0; right: 0; text-align: center;
-  color: #1565c0; font-size: clamp(13px, 3.4vw, 17px); font-weight: bold;
-  pointer-events: none; transition: opacity .3s;
+  position: absolute; left: 0; right: 0; bottom: 12px; text-align: center;
+  font-size: 15px; font-weight: 600; color: var(--accent); pointer-events: none; transition: opacity .3s ease;
 }
 
-/* ---- controls ---- */
-#controls { width: min(560px, 100%); display: flex; gap: 10px; justify-content: center; padding-bottom: 4px; }
+#controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
 .ctrl-btn {
-  font-family: inherit; font-weight: bold; color: #1565c0; cursor: pointer;
-  border: none; background: #fff;
-  border-radius: 18px; padding: 14px; font-size: clamp(16px, 4.4vw, 22px);
-  min-width: 56px; box-shadow: 0 5px 12px rgba(21,101,192,.16);
+  border: none; cursor: pointer; font-family: var(--font); font-weight: 600;
+  background: #fff; color: var(--accent); border-radius: 18px;
+  box-shadow: 0 7px 16px rgba(70,90,150,.14); transition: transform .16s ease, box-shadow .16s ease;
+  display: inline-flex; align-items: center; gap: 8px;
+  width: 58px; height: 58px; justify-content: center; font-size: 20px; padding: 0;
 }
-.ctrl-btn.wide { flex: 1; max-width: 200px; }
-.ctrl-btn.go { background: linear-gradient(#42a5f5, #1976d2); color: #fff; }
-.ctrl-btn:active { transform: translateY(3px); box-shadow: 0 2px 5px rgba(21,101,192,.16); }
+#btnClear { width: auto; padding: 0 24px; font-size: 17px; }
+#btnNext { background: var(--accent); color: #fff; }
+.ctrl-btn:hover { transform: translateY(-2px); }
+.ctrl-btn:active { transform: scale(.94); }
 
-/* ---- overlays ---- */
-.overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(20,40,70,0.5); }
+.overlay { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(44,59,102,.45); backdrop-filter: blur(3px); }
 .success-card, .picker-card {
-  background: #fff; color: #1565c0; border-radius: 30px; padding: 26px 24px;
-  text-align: center; box-shadow: 0 18px 40px rgba(0,0,0,.35); max-width: 94vw; max-height: 90vh; overflow-y: auto;
+  background: #fff; color: var(--accent); border-radius: 28px; padding: 26px 24px; text-align: center;
+  box-shadow: 0 30px 60px rgba(20,30,70,.35); max-width: 94vw; max-height: 90vh; overflow-y: auto;
+  animation: popcard .3s cubic-bezier(.34,1.56,.64,1);
 }
+@keyframes popcard { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .success-stars { font-size: clamp(40px, 12vw, 64px); letter-spacing: 6px; animation: pop .5s ease; }
 @keyframes pop { 0% { transform: scale(0); } 70% { transform: scale(1.2); } 100% { transform: scale(1); } }
-.success-letter { font-family: "Faruma", "Noto Sans Thaana", "MV Boli", sans-serif; font-size: clamp(60px, 18vw, 110px); color: #1976d2; line-height: 1; }
-.success-card h2 { font-size: clamp(22px, 6vw, 32px); margin: 6px 0 14px; color: #0d47a1; }
+.success-letter { font-family: var(--thaana); font-size: clamp(60px, 18vw, 110px); color: var(--accent); line-height: 1; }
+.success-card h2 { font-size: clamp(22px, 6vw, 32px); margin: 6px 0 14px; color: var(--ink); }
 .success-buttons { display: flex; gap: 10px; justify-content: center; }
-.success-buttons .ctrl-btn { color: #fff; background: linear-gradient(#42a5f5, #1976d2); }
+.success-buttons .ctrl-btn { width: auto; padding: 0 24px; height: 52px; color: #fff; background: var(--accent); }
 .success-buttons .ctrl-btn.go { background: linear-gradient(#66bb6a, #43a047); }
 
-/* ---- letter picker (card grid like the reference app) ---- */
-.picker-card h2 { color: #0d47a1; margin-bottom: 14px; font-size: clamp(20px, 5vw, 28px); }
-.picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; width: min(560px, 84vw); margin-bottom: 14px; }
-@media (max-width: 480px) { .picker-grid { grid-template-columns: repeat(3, 1fr); } }
+.picker-card h2 { color: var(--accent); margin-bottom: 16px; font-size: 24px; text-align: center; }
+.picker-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; width: min(560px, 84vw); margin-bottom: 14px; }
+@media (max-width: 480px) { .picker-grid { grid-template-columns: repeat(4, 1fr); } }
 .picker-cell {
-  aspect-ratio: 1/1; border-radius: 18px; border: 2px solid #e3edf7;
-  background: #f6faff; color: #1565c0; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; position: relative;
-  font-family: "Faruma", "Noto Sans Thaana", "MV Boli", sans-serif;
-  font-size: clamp(24px, 7vw, 38px); font-weight: 700;
-  box-shadow: 0 4px 10px rgba(21,101,192,.08);
+  position: relative; aspect-ratio: 1/1; border: 2px solid #e6ecf7; border-radius: 16px;
+  background: #f7faff; cursor: pointer; font-family: var(--thaana);
+  font-size: 28px; font-weight: 700; color: var(--accent); display: grid; place-items: center;
+  transition: transform .14s ease, border-color .14s ease, background .14s ease;
 }
-.picker-cell:active { transform: scale(.93); }
-.picker-cell.done { background: #eafaef; border-color: #a5d6b0; }
-.picker-cell .check { position: absolute; top: 4px; right: 6px; font-size: 13px; color: #43a047; }
-.picker-cell.current { outline: 3px solid #1976d2; }
-.picker-card .ctrl-btn { color: #fff; background: linear-gradient(#42a5f5, #1976d2); }
+.picker-cell:hover { transform: translateY(-2px) scale(1.04); border-color: var(--accent); }
+.picker-cell.done { background: #eafaf0; border-color: #b7e8c8; }
+.picker-cell .check { position: absolute; top: 4px; right: 6px; font-size: 13px; color: #36c06b; }
+.picker-cell.current { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,93,125,.2); }
+.picker-card .ctrl-btn { display: block; margin: 4px auto 0; width: auto; padding: 0 30px; height: 50px; color: #fff; background: var(--accent); border-radius: 999px; }
