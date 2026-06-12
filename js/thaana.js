@@ -33,7 +33,7 @@
   const FONT = '"Faruma", "Noto Sans Thaana", "MV Boli", sans-serif';
   const PEN = 7;             // the child's tracing pen
   const DETECT = 26;         // how close the pen must be to the line to "hit" it
-  const DOT_GAP = 6;         // spacing of centre-line dots (small -> looks like a solid line)
+  const DOT_GAP = 13;        // spacing of the dashed centre-line dots
   const DOT_R = 3;           // centre-line dot radius
   const END_R = 9;           // big start/end dot radius
 
@@ -199,13 +199,10 @@
     ctx.strokeStyle = "rgba(44,59,102,0.16)"; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
     ctx.beginPath(); ctx.moveTo(SIZE * 0.08, SIZE / 2); ctx.lineTo(SIZE * 0.92, SIZE / 2); ctx.stroke(); ctx.setLineDash([]);
 
-    // the letter guide: faint fill + dashed outline (matches the design)
-    paintGlyph(ctx, "rgba(44,59,102,0.10)");
-    ctx.lineWidth = 3; ctx.setLineDash([5, 9]); ctx.lineJoin = "round";
-    ctx.strokeStyle = "rgba(44,59,102,0.34)";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "700 " + glyphFontSize() + "px " + FONT;
-    ctx.strokeText(LETTERS[index].c, SIZE / 2, SIZE / 2 + 10);
-    ctx.setLineDash([]);
+    // the letter guide: faint fill + a single dashed centre line
+    paintGlyph(ctx, "rgba(44,59,102,0.12)");
+    ctx.fillStyle = "rgba(44,59,102,0.40)";
+    for (const d of skelDots) { ctx.beginPath(); ctx.arc(d.x, d.y, 2.6, 0, 7); ctx.fill(); }
 
     // the child's pen
     ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN;

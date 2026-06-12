@@ -75,6 +75,7 @@
 
   let index = 0, strokes = [], drawing = false;
   let targetPixels = null, targetCount = 0, solved = false, moveTick = 0;
+  let dashDots = [];   // sub-sampled centre line -> single dashed guide
 
   function curChar() { return save.lower ? LETTERS[index].c.toLowerCase() : LETTERS[index].c; }
 
@@ -127,6 +128,19 @@
     thin(skel, SIZE, SIZE);
     targetPixels = skel; targetCount = 0;
     for (let i = 0; i < skel.length; i++) if (skel[i]) targetCount++;
+
+    // sub-sample the centre line into evenly spaced dashes (a single dashed guide)
+    const pts = [];
+    for (let y = 0; y < SIZE; y++)
+      for (let x = 0; x < SIZE; x++)
+        if (skel[y * SIZE + x]) pts.push({ x, y });
+    dashDots = [];
+    const minSq = 13 * 13;
+    for (const p of pts) {
+      let ok = true;
+      for (const d of dashDots) { const dx = d.x - p.x, dy = d.y - p.y; if (dx * dx + dy * dy < minSq) { ok = false; break; } }
+      if (ok) dashDots.push(p);
+    }
   }
 
   function render() {
@@ -138,13 +152,10 @@
     ctx.strokeStyle = "rgba(44,59,102,0.16)"; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
     ctx.beginPath(); ctx.moveTo(SIZE * 0.08, SIZE / 2); ctx.lineTo(SIZE * 0.92, SIZE / 2); ctx.stroke(); ctx.setLineDash([]);
 
-    // the letter guide: faint fill + dashed outline (matches the design)
-    paintGlyph(ctx, "rgba(44,59,102,0.10)");
-    ctx.lineWidth = 3; ctx.setLineDash([5, 9]); ctx.lineJoin = "round";
-    ctx.strokeStyle = "rgba(44,59,102,0.34)";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = "700 " + glyphFontSize() + "px " + FONT;
-    ctx.strokeText(curChar(), SIZE / 2, glyphY());
-    ctx.setLineDash([]);
+    // the letter guide: faint fill + a single dashed centre line
+    paintGlyph(ctx, "rgba(44,59,102,0.12)");
+    ctx.fillStyle = "rgba(44,59,102,0.40)";
+    for (const d of dashDots) { ctx.beginPath(); ctx.arc(d.x, d.y, 2.6, 0, 7); ctx.fill(); }
 
     // the child's pen
     ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN; ctx.lineCap = "round"; ctx.lineJoin = "round";
