@@ -159,11 +159,9 @@
   function render() {
     ctx.clearRect(0, 0, SIZE, SIZE);
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, SIZE, SIZE);
-    // lined paper + dashed midline
+    // lined paper
     ctx.strokeStyle = "rgba(44,59,102,0.07)"; ctx.lineWidth = 1.5;
     for (let y = SIZE * 0.13; y < SIZE - 1; y += SIZE * 0.13) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(SIZE, y); ctx.stroke(); }
-    ctx.strokeStyle = "rgba(44,59,102,0.16)"; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
-    ctx.beginPath(); ctx.moveTo(SIZE * 0.08, SIZE / 2); ctx.lineTo(SIZE * 0.92, SIZE / 2); ctx.stroke(); ctx.setLineDash([]);
 
     // the letter guide: faint fill + a single dashed centre line
     paintGlyph(ctx, "rgba(44,59,102,0.12)");
