@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🔤 ABC Tracing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/abc.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <a class="top-btn" href="index.html" title="All games">⬅</a>
+      <div class="title-wrap">
+        <div class="letter-name" id="letterName">A</div>
+        <div class="letter-sub" id="letterSub">A is for Apple</div>
+      </div>
+      <button class="top-btn" id="btnGrid" title="Pick a letter">▦</button>
+    </header>
+
+    <div id="progressBar"></div>
+
+    <main>
+      <div class="word-badge"><span class="emoji" id="wordEmoji">🍎</span><span id="wordText">Apple</span></div>
+      <div class="canvas-box">
+        <canvas id="trace" width="420" height="420"></canvas>
+        <div class="hint" id="hint">👆 Trace the letter</div>
+      </div>
+    </main>
+
+    <div id="controls">
+      <button class="ctrl-btn" id="btnPrev">◀</button>
+      <button class="ctrl-btn" id="btnClear">🧽</button>
+      <button class="ctrl-btn" id="btnCase">a/A</button>
+      <button class="ctrl-btn" id="btnSound">🔊</button>
+      <button class="ctrl-btn" id="btnNext">▶</button>
+    </div>
+
+    <div id="success" class="overlay hidden">
+      <div class="success-card">
+        <div class="success-stars">⭐⭐⭐</div>
+        <div class="success-letter" id="successLetter">A</div>
+        <h2 id="successText">Great job!</h2>
+        <div class="success-buttons">
+          <button class="ctrl-btn wide" id="btnAgain">🔄 Again</button>
+          <button class="ctrl-btn wide go" id="btnNext2">Next ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="picker" class="overlay hidden">
+      <div class="picker-card">
+        <h2>Pick a Letter</h2>
+        <div id="pickerGrid" class="picker-grid"></div>
+        <button class="ctrl-btn wide" id="btnClosePicker">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/abc.js"></script>
+</body>
+</html>

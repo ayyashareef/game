@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🚵 Mountain Bike Adventure</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="game">
+    <canvas id="canvas"></canvas>
+
+    <!-- In-game HUD -->
+    <div id="hud" class="hidden">
+      <button class="hud-btn" id="btnMenu" title="Back to map">🏠</button>
+      <div id="starCount" class="star-count">⭐ 0 / 0</div>
+      <button class="hud-btn" id="btnRestart" title="Restart">🔄</button>
+    </div>
+
+    <!-- Touch controls -->
+    <div id="touchControls" class="hidden">
+      <button class="ctrl ctrl-back" id="ctrlBack">◀</button>
+      <button class="ctrl ctrl-go" id="ctrlGo">GO ▶</button>
+    </div>
+
+    <!-- HOME screen -->
+    <div id="home" class="screen">
+      <div class="bubble">
+        <h1 class="title">🚵 Mountain<br>Bike Adventure</h1>
+        <p class="subtitle">Ride over the hills and collect the stars!</p>
+        <button class="big-btn play" id="btnPlay">▶ PLAY</button>
+        <button class="big-btn ghost" id="btnMute">🔊 Sound: On</button>
+        <a class="big-btn ghost small" href="index.html" style="text-decoration:none;">⬅ All Games</a>
+      </div>
+    </div>
+
+    <!-- LEVEL SELECT screen -->
+    <div id="levels" class="screen hidden">
+      <h2 class="screen-title">Pick a Trail!</h2>
+      <div id="levelGrid" class="level-grid"></div>
+      <button class="big-btn ghost small" id="btnHome">🏠 Home</button>
+    </div>
+
+    <!-- WIN screen -->
+    <div id="win" class="screen hidden">
+      <div class="bubble">
+        <h2 class="screen-title" id="winTitle">You Made It! 🎉</h2>
+        <div class="win-stars" id="winStars">⭐⭐⭐</div>
+        <p class="subtitle" id="winMsg">Great riding!</p>
+        <div class="win-buttons">
+          <button class="big-btn ghost small" id="btnWinMenu">🗺️ Map</button>
+          <button class="big-btn ghost small" id="btnWinReplay">🔄 Again</button>
+          <button class="big-btn play small" id="btnNext">Next ▶</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/storage.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/levels.js"></script>
+  <script src="js/bike.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

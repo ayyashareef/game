@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>✏️ Thaana Letters — Haa Shaviyani</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thaana:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/thaana.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- top bar -->
+    <header>
+      <a class="top-btn" href="index.html" title="All games">⬅</a>
+      <div class="title-wrap">
+        <div class="letter-name" id="letterName">Haa</div>
+        <div class="letter-sub" id="letterSub">Trace the letter!</div>
+      </div>
+      <button class="top-btn" id="btnGrid" title="Pick a letter">▦</button>
+    </header>
+
+    <!-- progress dots -->
+    <div id="progressBar"></div>
+
+    <!-- tracing area -->
+    <main>
+      <div class="big-letter" id="bigLetter">ހ</div>
+      <div class="canvas-box">
+        <canvas id="trace" width="420" height="420"></canvas>
+        <div class="hint" id="hint">👆 Trace over the letter</div>
+      </div>
+    </main>
+
+    <!-- controls -->
+    <div id="controls">
+      <button class="ctrl-btn" id="btnPrev">◀</button>
+      <button class="ctrl-btn wide" id="btnClear">🧽 Clear</button>
+      <button class="ctrl-btn" id="btnSound">🔊</button>
+      <button class="ctrl-btn" id="btnNext">▶</button>
+    </div>
+
+    <!-- success overlay -->
+    <div id="success" class="overlay hidden">
+      <div class="success-card">
+        <div class="success-stars">⭐⭐⭐</div>
+        <div class="success-letter" id="successLetter">ހ</div>
+        <h2 id="successText">Great job!</h2>
+        <div class="success-buttons">
+          <button class="ctrl-btn wide" id="btnAgain">🔄 Again</button>
+          <button class="ctrl-btn wide go" id="btnNext2">Next ▶</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- letter picker -->
+    <div id="picker" class="overlay hidden">
+      <div class="picker-card">
+        <h2>Pick a Letter</h2>
+        <div id="pickerGrid" class="picker-grid"></div>
+        <button class="ctrl-btn wide" id="btnClosePicker">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/thaana.js"></script>
+</body>
+</html>

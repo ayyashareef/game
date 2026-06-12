@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🎮 Kids Games</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      width: 100%; min-height: 100%;
+      font-family: "Comic Sans MS", "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(160deg, #5b6df0 0%, #8a4fd6 50%, #d65fb0 100%);
+      color: #fff; user-select: none; overflow-x: hidden;
+    }
+    .wrap {
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 30px 18px; gap: 26px;
+    }
+    h1 {
+      font-size: clamp(34px, 9vw, 70px); text-align: center; line-height: 1.05;
+      text-shadow: 0 5px 0 #00000033, 4px 4px 0 #0003;
+    }
+    .tag { font-size: clamp(15px, 3.6vw, 22px); opacity: .95; text-align: center; margin-top: -10px; }
+    .cards {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 22px; width: min(820px, 96vw); margin-top: 6px;
+    }
+    @media (max-width: 460px) { .cards { grid-template-columns: 1fr; } }
+
+    .card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; text-decoration: none; color: #fff;
+      border-radius: 30px; padding: 30px 20px; aspect-ratio: 4 / 3;
+      border: 6px solid #fff; cursor: pointer;
+      box-shadow: 0 10px 0 rgba(0,0,0,0.22), 0 16px 30px rgba(0,0,0,0.25);
+      transition: transform .12s, box-shadow .12s;
+    }
+    .card:active { transform: translateY(6px); box-shadow: 0 4px 0 rgba(0,0,0,0.22); }
+    .card .emoji { font-size: clamp(54px, 15vw, 92px); filter: drop-shadow(0 4px 6px #0004); }
+    .card .name { font-size: clamp(22px, 5.5vw, 32px); font-weight: bold; text-align: center; text-shadow: 0 3px 0 #0003; }
+    .card .desc { font-size: clamp(13px, 3.2vw, 17px); text-align: center; opacity: .95; }
+
+    .bike { background: linear-gradient(150deg, #4fc3f7, #43a047); }
+    .thaana { background: linear-gradient(150deg, #ff8a65, #d81b60); }
+    .abc { background: linear-gradient(150deg, #4fc3f7, #1565c0); }
+    .thaana .big { font-family: "Noto Sans Thaana", "MV Boli", sans-serif; font-size: clamp(48px, 13vw, 80px); }
+    .footer { font-size: 14px; opacity: .8; margin-top: 8px; text-align:center; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thaana:wght@600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="wrap">
+    <h1>🎮 Fun Games</h1>
+    <p class="tag">Pick a game to play!</p>
+
+    <div class="cards">
+      <a class="card bike" href="bike.html">
+        <div class="emoji">🚵</div>
+        <div class="name">Mountain Bike</div>
+        <div class="desc">Ride the hills & collect stars</div>
+      </a>
+
+      <a class="card thaana" href="thaana.html">
+        <div class="emoji">✏️ <span class="big">ހ</span></div>
+        <div class="name">Thaana Letters</div>
+        <div class="desc">Trace Haa Shaviyani letters</div>
+      </a>
+
+      <a class="card abc" href="abc.html">
+        <div class="emoji">🔤</div>
+        <div class="name">ABC Letters</div>
+        <div class="desc">Trace A to Z with fun words</div>
+      </a>
+    </div>
+
+    <p class="footer">Made for ages 4–9 💛</p>
+  </div>
+</body>
+</html>
