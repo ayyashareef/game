@@ -31,10 +31,10 @@
 
   const SIZE = 420;
   const FONT = '"Baloo 2", "Comic Sans MS", sans-serif';
-  const PEN = 5;             // thin pen, like tracing dots on a worksheet
-  const DETECT = 24;         // how close the pen must be to the line to "hit" it
-  const DOT_GAP = 16;        // even spacing between the guide dots
-  const DOT_R = 4;           // guide dot radius
+  const PEN = 7;             // the child's tracing pen
+  const DETECT = 26;         // how close the pen must be to the line to "hit" it
+  const DOT_GAP = 13;        // spacing of the dashed centre-line dots
+  const DOT_R = 2.8;         // centre-line dash radius
 
   // ---- storage ----
   const KEY = "abc_trace_v1";
@@ -76,16 +76,16 @@
   const itx = maskInk.getContext("2d", { willReadFrequently: true });
 
   let index = 0, strokes = [], drawing = false;
-  let targetPixels = null, targetCount = 0, skelDots = [], solved = false, moveTick = 0, fontReady = false;
+  let targetPixels = null, targetCount = 0, skelDots = [], endDots = [], solved = false, moveTick = 0, fontReady = false;
 
   function curChar() { return save.lower ? LETTERS[index].c.toLowerCase() : LETTERS[index].c; }
 
-  function drawGlyph(c, color) {
-    c.clearRect(0, 0, SIZE, SIZE);
+  function paintGlyph(c, color) {
     c.fillStyle = color; c.textAlign = "center"; c.textBaseline = "middle";
     c.font = "800 250px " + FONT;
     c.fillText(curChar(), SIZE / 2, SIZE / 2 + 8);
   }
+  function drawGlyph(c, color) { c.clearRect(0, 0, SIZE, SIZE); paintGlyph(c, color); }
 
   /* Zhang-Suen thinning: reduce the filled letter to a 1px centre-line ("skeleton"). */
   function thin(g, w, h) {
@@ -146,18 +146,54 @@
       }
       if (ok) skelDots.push(p);
     }
+
+    // endpoints = skeleton pixels with a single neighbour (start/end of strokes)
+    const isSkel = (x, y) => (x < 0 || y < 0 || x >= SIZE || y >= SIZE) ? 0 : skel[y * SIZE + x];
+    const ends = [];
+    for (const p of pts) {
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++)
+        for (let dx = -1; dx <= 1; dx++)
+          if (!(dx === 0 && dy === 0)) n += isSkel(p.x + dx, p.y + dy);
+      if (n === 1) ends.push(p);
+    }
+    endDots = [];
+    for (const p of ends) {
+      let ok = true;
+      for (const d of endDots) {
+        const dx = d.x - p.x, dy = d.y - p.y;
+        if (dx * dx + dy * dy < 30 * 30) { ok = false; break; }
+      }
+      if (ok) endDots.push(p);
+    }
   }
 
   function render() {
     ctx.clearRect(0, 0, SIZE, SIZE);
     ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, SIZE, SIZE);
-    // dotted guide line (the part you trace), like a worksheet
-    ctx.fillStyle = "#3a3a44";
-    for (const d of skelDots) {
-      ctx.beginPath(); ctx.arc(d.x, d.y, DOT_R, 0, 7); ctx.fill();
-    }
+
+    // black outline of the letter (hollow), like a tracing worksheet
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = "#2a2a2a"; ctx.lineWidth = 3.5;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.font = "800 250px " + FONT;
+    ctx.strokeText(curChar(), SIZE / 2, SIZE / 2 + 8);
+
+    // dashed line down the middle (the path to trace)
+    ctx.fillStyle = "#555";
+    for (const d of skelDots) { ctx.beginPath(); ctx.arc(d.x, d.y, DOT_R, 0, 7); ctx.fill(); }
+
+    // numbered stroke-start markers (best-effort order: top -> bottom, left -> right)
+    const ordered = endDots.slice().sort((a, b) => (a.y - b.y) || (a.x - b.x));
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ordered.forEach((d, i) => {
+      ctx.fillStyle = "#1565c0"; ctx.beginPath(); ctx.arc(d.x, d.y, 11, 0, 7); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = "bold 14px Arial, sans-serif";
+      ctx.fillText(String(i + 1), d.x, d.y + 1);
+    });
+
     // the child's pen
-    ctx.strokeStyle = "#e53935"; ctx.lineWidth = PEN; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    ctx.strokeStyle = "#e8513a"; ctx.lineWidth = PEN; ctx.lineCap = "round"; ctx.lineJoin = "round";
     for (const st of strokes) {
       if (!st.points.length) continue;
       ctx.beginPath(); ctx.moveTo(st.points[0].x, st.points[0].y);
