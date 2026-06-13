@@ -81,16 +81,41 @@
   .b-win .big { font-size: 64px; animation: bob 1.6s ease-in-out infinite; }
   .b-win h3 { font-size: 38px; font-weight: 700; }
   .b-win p { font-size: 19px; font-weight: 500; opacity: .95; }
-  .b-win .row { display: flex; gap: 12px; margin-top: 6px; }
-  .b-win button { border: none; cursor: pointer; font-family: var(--font); font-weight: 600; font-size: 17px; padding: 13px 26px; border-radius: 999px; box-shadow: 0 8px 18px rgba(0,0,0,.2); }
-  .b-win .again { background: #fff; color: #27b15f; }
-  .b-win .home { background: rgba(255,255,255,.22); color: #fff; }
+  .b-win .row { display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap; justify-content: center; }
+  .b-wbtn { border: none; cursor: pointer; font-family: var(--font); font-weight: 700; font-size: 16px; padding: 13px 22px; border-radius: 999px; box-shadow: 0 8px 18px rgba(0,0,0,.2); background: #fff; color: #2c3b66; }
+  .b-wbtn.ghost { background: rgba(255,255,255,.22); color: #fff; }
+  .b-wbtn.go { background: linear-gradient(#7be38f, #27b15f); color: #fff; }
+  .b-wbtn:active { transform: scale(.94); }
+
+  /* ---- level select ---- */
+  .b-select { position: absolute; inset: 0; z-index: 9; display: none; align-items: center; justify-content: center; padding: 20px;
+    background: linear-gradient(170deg, #eaf4ff 0%, #f1ecff 55%, #fdeef3 100%); }
+  .b-select.show { display: flex; animation: fadein .2s ease; }
+  .b-sel-card { width: min(680px, 96vw); max-height: 92vh; overflow-y: auto; text-align: center; }
+  .b-sel-card h3 { font-size: clamp(26px, 6vw, 40px); font-weight: 700; color: #2c3b66; margin-bottom: 18px; }
+  .b-sel-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 520px) { .b-sel-grid { grid-template-columns: repeat(2, 1fr); } }
+  .b-sel-item {
+    position: relative; aspect-ratio: 4/3; border: none; border-radius: 22px; cursor: pointer;
+    color: #fff; font-family: var(--font); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    box-shadow: 0 12px 22px -8px rgba(40,70,110,.4), inset 0 2px 0 rgba(255,255,255,.4);
+    transition: transform .14s ease;
+  }
+  .b-sel-item:active { transform: scale(.95); }
+  .b-sel-item .num { font-size: clamp(26px, 7vw, 38px); font-weight: 700; text-shadow: 0 3px 0 rgba(0,0,0,.15); }
+  .b-sel-item .nm { font-size: clamp(12px, 3vw, 15px); font-weight: 600; }
+  .b-sel-item .st { font-size: clamp(11px, 2.8vw, 14px); font-weight: 700; background: rgba(255,255,255,.25); padding: 2px 12px; border-radius: 999px; }
+  .b-sel-item.locked { background: #d7dee8; color: #9aa6bd; cursor: not-allowed; box-shadow: 0 8px 16px -8px rgba(40,70,110,.25); }
+  .b-sel-item.locked .lock { font-size: clamp(28px, 8vw, 42px); }
+  .b-sel-home { margin-top: 20px; border: none; cursor: pointer; font-family: var(--font); font-weight: 700; font-size: 17px;
+    color: #fff; background: linear-gradient(#42a5f5, #1976d2); padding: 13px 30px; border-radius: 999px; box-shadow: 0 8px 18px rgba(43,143,224,.4); }
+  .b-sel-home:active { transform: scale(.95); }
 </style>
 </head>
 <body data-screen="bike">
   <section id="screen-bike"></section>
 
-  <script src="js/bike.js?v=8"></script>
+  <script src="js/bike.js?v=9"></script>
   <script>
     // standalone wiring: the dashboard is the "home"
     window.goHome = function () { if (window.stopBike) window.stopBike(); window.location.href = 'index.html'; };
